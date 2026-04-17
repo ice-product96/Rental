@@ -3,6 +3,13 @@ Pricing calculator based on Excel file "Расчет аренды лесов.xls
 All formulas, coefficients and rate tables are taken directly from the Excel model.
 """
 import math
+from .defaults import (
+    DEFAULT_CITY_COEFFICIENTS,
+    DEFAULT_SCAFFOLD_SEASON_COEFF,
+    DEFAULT_SCAFFOLD_PRICE_COEFF,
+    DEFAULT_TOWER_MODEL_COEFFS,
+    DEFAULT_TOWER_PSRV22_EXTRA_CHARGE,
+)
 
 # ============================================================
 # SCAFFOLDING RATE TABLE (руб./м2/день) — Sheet "Расчет лесов" AG2:AM7
@@ -38,14 +45,9 @@ TOWER_RATES = [
 ]
 
 # ============================================================
-# CITY COEFFICIENTS — Sheet "Расчет лесов" AG22:AG25 / "Вышки туры" Z14:Z17
+# CITY COEFFICIENTS (defaults) — Sheet "Расчет лесов" AG22:AG25 / "Вышки туры" Z14:Z17
 # ============================================================
-CITY_COEFFICIENTS = {
-    'Екатеринбург': 1.0,
-    'Пермь': 1.15,
-    'Новосибирск': 1.15,
-    'Челябинск': 1.4,
-}
+CITY_COEFFICIENTS = dict(DEFAULT_CITY_COEFFICIENTS)
 
 # ============================================================
 # SCAFFOLD BASE EQUIPMENT PRICES (Abris prices, коп. AI30=1.15)
@@ -63,7 +65,7 @@ SCAFFOLD_BASE_PRICES = {
     'base_plate': 150,      # Башмак
 }
 
-SCAFFOLD_PRICE_COEFF = 1.15  # AI30 — наш коэффициент на цены Абрис
+SCAFFOLD_PRICE_COEFF = DEFAULT_SCAFFOLD_PRICE_COEFF  # AI30 — наш коэффициент на цены Абрис
 
 # ============================================================
 # SCAFFOLD EQUIPMENT WEIGHTS (kg) and VOLUMES (m3) per unit
@@ -163,6 +165,65 @@ def roundup(value, decimals=0):
         return math.ceil(float(value) / factor) * factor
 
 
+def _safe_float(value, fallback):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return float(fallback)
+
+
+def _get_coeff_settings():
+    try:
+        from .models import PricingCoefficientSettings
+        return PricingCoefficientSettings.get_solo()
+    except Exception:
+        return None
+
+
+def get_city_coefficients():
+    settings = _get_coeff_settings()
+    if not settings:
+        return dict(DEFAULT_CITY_COEFFICIENTS)
+
+    raw = settings.city_coefficients or {}
+    cleaned = {}
+    if isinstance(raw, dict):
+        for city, coeff in raw.items():
+            city_name = str(city).strip()
+            if not city_name:
+                continue
+            cleaned[city_name] = _safe_float(coeff, 1.0)
+    return cleaned or dict(DEFAULT_CITY_COEFFICIENTS)
+
+
+def get_scaffolding_default_coeffs():
+    settings = _get_coeff_settings()
+    if not settings:
+        return {
+            'season_coeff': DEFAULT_SCAFFOLD_SEASON_COEFF,
+            'price_coeff': DEFAULT_SCAFFOLD_PRICE_COEFF,
+        }
+    return {
+        'season_coeff': _safe_float(settings.scaffold_season_coeff_default, DEFAULT_SCAFFOLD_SEASON_COEFF),
+        'price_coeff': _safe_float(settings.scaffold_price_coeff_default, DEFAULT_SCAFFOLD_PRICE_COEFF),
+    }
+
+
+def get_tower_model_coeffs():
+    settings = _get_coeff_settings()
+    if not settings:
+        return {
+            'ПСРВ-21': DEFAULT_TOWER_MODEL_COEFFS['ПСРВ-21'],
+            'ПСРВ-22': DEFAULT_TOWER_MODEL_COEFFS['ПСРВ-22'],
+            'psrv22_extra_charge': DEFAULT_TOWER_PSRV22_EXTRA_CHARGE,
+        }
+    return {
+        'ПСРВ-21': _safe_float(settings.tower_psrv21_model_coeff, DEFAULT_TOWER_MODEL_COEFFS['ПСРВ-21']),
+        'ПСРВ-22': _safe_float(settings.tower_psrv22_model_coeff, DEFAULT_TOWER_MODEL_COEFFS['ПСРВ-22']),
+        'psrv22_extra_charge': _safe_float(settings.tower_psrv22_extra_charge, DEFAULT_TOWER_PSRV22_EXTRA_CHARGE),
+    }
+
+
 def get_scaffold_rate(area, days):
     """Lookup scaffold rate from rate table."""
     for a_max, d_max, rate in SCAFFOLD_RATES:
@@ -215,9 +276,9 @@ def get_tower_sections(height):
 # MAIN CALCULATORS
 # ============================================================
 
-def calculate_scaffolding(sides, days, city='Екатеринбург', season_coeff=1.2,
+def calculate_scaffolding(sides, days, city='Екатеринбург', season_coeff=None,
                           diagonal_mode='every', planks_qty=4, deposit_pct=10,
-                          delivery_cost=0, vat_mode='no_vat', price_coeff=1.15,
+                          delivery_cost=0, vat_mode='no_vat', price_coeff=None,
                           bracket_qty=0, base_plate_qty=0):
     """
     Scaffolding rental calculator.
@@ -227,6 +288,9 @@ def calculate_scaffolding(sides, days, city='Екатеринбург', season_c
     vat_mode: 'no_vat' or 'with_vat'
     """
     days = int(days)
+    defaults = get_scaffolding_default_coeffs()
+    season_coeff = _safe_float(season_coeff, defaults['season_coeff'])
+    price_coeff = _safe_float(price_coeff, defaults['price_coeff'])
 
     # ----------------------------------------------------------
     # 1. Area calculation: L3=J3*K3, L12=SUM(L3,L5,L7,L9)
@@ -282,7 +346,7 @@ def calculate_scaffolding(sides, days, city='Екатеринбург', season_c
     # 3. Rate lookup — C2 in Excel
     # ----------------------------------------------------------
     rate = get_scaffold_rate(total_area, days)
-    city_coeff = CITY_COEFFICIENTS.get(city, 1.0)
+    city_coeff = get_city_coefficients().get(city, 1.0)
 
     # ----------------------------------------------------------
     # 4. Ladder frame surcharge V2: 1.7 if ALL frames are ladder type
@@ -301,7 +365,7 @@ def calculate_scaffolding(sides, days, city='Екатеринбург', season_c
     # = ROUNDUP(rate * area * season * city * ladder + planks_daily, -1)
     # ----------------------------------------------------------
     daily_cost = roundup(
-        rate * total_area * float(season_coeff) * city_coeff * ladder_ratio_coeff + planks_daily,
+        rate * total_area * season_coeff * city_coeff * ladder_ratio_coeff + planks_daily,
         -1
     )
 
@@ -383,7 +447,7 @@ def calculate_scaffolding(sides, days, city='Екатеринбург', season_c
         'rate': rate,
         'city': city,
         'city_coeff': city_coeff,
-        'season_coeff': float(season_coeff),
+        'season_coeff': season_coeff,
         'ladder_ratio_coeff': ladder_ratio_coeff,
         'plank_rate': plank_rate,
         'planks_daily': planks_daily,
@@ -425,15 +489,16 @@ def calculate_tower(height, days, qty_towers=1, model='ПСРВ-21', city='Ек�
     # 1. Rate lookup — C3 in "Вышки туры"
     # ----------------------------------------------------------
     rate = get_tower_rate(height, days)
-    city_coeff = CITY_COEFFICIENTS.get(city, 1.0)
+    city_coeff = get_city_coefficients().get(city, 1.0)
+    tower_coeffs = get_tower_model_coeffs()
 
     # Model coefficient (L5): ПСРВ-21 = 0.85, ПСРВ-22 = 1.05
     if model == 'ПСРВ-21':
-        model_coeff = 0.85
+        model_coeff = tower_coeffs['ПСРВ-21']
         extra_charge = 0
     else:
-        model_coeff = 1.05
-        extra_charge = 50   # К7: ПСРВ-22 surcharge
+        model_coeff = tower_coeffs['ПСРВ-22']
+        extra_charge = tower_coeffs['psrv22_extra_charge']   # К7: ПСРВ-22 surcharge
 
     # VAT multiplier (L6=1.2 only if with_vat)
     vat_mult = 1.2 if vat_mode == 'with_vat' else 1.0

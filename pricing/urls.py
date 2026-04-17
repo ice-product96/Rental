@@ -6,4 +6,5 @@ urlpatterns = [
     path('calculator/', views.calculator, name='calculator'),
     path('api/calc/scaffolding/', views.calc_scaffolding_ajax, name='calc_scaffolding_ajax'),
     path('api/calc/tower/', views.calc_tower_ajax, name='calc_tower_ajax'),
+    path('api/settings/coefficients/', views.save_coefficients_ajax, name='save_coefficients_ajax'),
 ]
