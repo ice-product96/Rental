@@ -4,8 +4,10 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from .calculator import (
     calculate_scaffolding, calculate_tower,
-    CITY_COEFFICIENTS, DELIVERY_PRICES, TOWER_HEIGHT_SECTIONS
+    DELIVERY_PRICES, TOWER_HEIGHT_SECTIONS,
+    get_city_coefficients, get_scaffolding_default_coeffs, get_tower_model_coeffs,
 )
+from .models import PricingCoefficientSettings
 
 
 def dashboard(request):
@@ -37,10 +39,19 @@ def dashboard(request):
 
 
 def calculator(request):
-    cities = list(CITY_COEFFICIENTS.keys())
+    city_coeffs = get_city_coefficients()
+    scaffold_defaults = get_scaffolding_default_coeffs()
+    tower_coeffs = get_tower_model_coeffs()
+    cities = list(city_coeffs.keys())
     tower_heights = [h for h, s in TOWER_HEIGHT_SECTIONS]
     context = {
         'cities': cities,
+        'city_coeffs': city_coeffs,
+        'scaffold_defaults': scaffold_defaults,
+        'tower_coeffs': tower_coeffs,
+        'tower_coeff_psrv21': tower_coeffs.get('ПСРВ-21', 0.85),
+        'tower_coeff_psrv22': tower_coeffs.get('ПСРВ-22', 1.05),
+        'tower_extra_psrv22': tower_coeffs.get('psrv22_extra_charge', 50),
         'tower_heights': tower_heights,
         'delivery_prices': DELIVERY_PRICES,
         'page_title': 'Калькулятор аренды',
@@ -62,13 +73,13 @@ def calc_scaffolding_ajax(request):
             sides=sides,
             days=int(data.get('days', 30)),
             city=data.get('city', 'Екатеринбург'),
-            season_coeff=float(data.get('season_coeff', 1.2)),
+            season_coeff=data.get('season_coeff'),
             diagonal_mode=data.get('diagonal_mode', 'every'),
             planks_qty=int(data.get('planks_qty', 4) or 4),
             deposit_pct=float(data.get('deposit_pct', 10)),
             delivery_cost=float(data.get('delivery_cost', 0) or 0),
             vat_mode=data.get('vat_mode', 'no_vat'),
-            price_coeff=float(data.get('price_coeff', 1.15)),
+            price_coeff=data.get('price_coeff'),
             bracket_qty=int(data.get('bracket_qty', 0) or 0),
             base_plate_qty=int(data.get('base_plate_qty', 0) or 0),
         )
@@ -92,5 +103,42 @@ def calc_tower_ajax(request):
             vat_mode=data.get('vat_mode', 'no_vat'),
         )
         return JsonResponse({'ok': True, 'result': result})
+    except Exception as e:
+        return JsonResponse({'ok': False, 'error': str(e)}, status=400)
+
+
+@require_POST
+def save_coefficients_ajax(request):
+    try:
+        data = json.loads(request.body)
+
+        raw_city_coeffs = data.get('city_coefficients', {})
+        if not isinstance(raw_city_coeffs, dict):
+            raise ValueError('Коэффициенты городов должны быть словарём.')
+
+        city_coeffs = {}
+        for city, coeff in raw_city_coeffs.items():
+            city_name = str(city).strip()
+            if not city_name:
+                continue
+            city_coeffs[city_name] = float(coeff)
+
+        settings = PricingCoefficientSettings.get_solo()
+        settings.city_coefficients = city_coeffs
+        settings.scaffold_season_coeff_default = float(data.get('scaffold_season_coeff_default'))
+        settings.scaffold_price_coeff_default = float(data.get('scaffold_price_coeff_default'))
+        settings.tower_psrv21_model_coeff = float(data.get('tower_psrv21_model_coeff'))
+        settings.tower_psrv22_model_coeff = float(data.get('tower_psrv22_model_coeff'))
+        settings.tower_psrv22_extra_charge = float(data.get('tower_psrv22_extra_charge'))
+        settings.save()
+
+        return JsonResponse({
+            'ok': True,
+            'coefficients': {
+                'city_coefficients': get_city_coefficients(),
+                'scaffold_defaults': get_scaffolding_default_coeffs(),
+                'tower_coeffs': get_tower_model_coeffs(),
+            },
+        })
     except Exception as e:
         return JsonResponse({'ok': False, 'error': str(e)}, status=400)

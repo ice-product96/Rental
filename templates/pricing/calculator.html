@@ -30,6 +30,11 @@
       <i class="bi bi-truck me-1"></i>Расценки доставки
     </button>
   </li>
+  <li class="nav-item">
+    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-coeffs">
+      <i class="bi bi-sliders me-1"></i>Коэффициенты
+    </button>
+  </li>
 </ul>
 
 <div class="tab-content">
@@ -97,7 +102,7 @@
         </div>
         <div class="col-md-4">
           <label class="form-label small">Сезонный коэф.</label>
-          <input type="number" class="form-control form-control-sm" id="s_season_coeff" value="1.2" step="0.05" min="1">
+          <input type="number" class="form-control form-control-sm" id="s_season_coeff" value="{{ scaffold_defaults.season_coeff }}" step="0.05" min="1">
         </div>
         <div class="col-md-4">
           <label class="form-label small">Залог %</label>
@@ -119,7 +124,7 @@
         </div>
         <div class="col-md-4">
           <label class="form-label small">Коэф. цен (AI30)</label>
-          <input type="number" class="form-control form-control-sm" id="s_price_coeff" value="1.15" step="0.01" min="1">
+          <input type="number" class="form-control form-control-sm" id="s_price_coeff" value="{{ scaffold_defaults.price_coeff }}" step="0.01" min="1">
         </div>
       </div>
 
@@ -216,8 +221,8 @@
         <div class="col-md-6">
           <label class="form-label small">Модель</label>
           <select class="form-select form-select-sm" id="t_model">
-            <option value="ПСРВ-21">ПСРВ-21 (−15%)</option>
-            <option value="ПСРВ-22">ПСРВ-22 (+5%)</option>
+            <option value="ПСРВ-21">ПСРВ-21 (коэф. {{ tower_coeff_psrv21 }})</option>
+            <option value="ПСРВ-22">ПСРВ-22 (коэф. {{ tower_coeff_psrv22 }})</option>
           </select>
         </div>
       </div>
@@ -326,6 +331,83 @@
 </div>
 </div>
 
+<!-- === COEFFICIENTS TAB === -->
+<div class="tab-pane fade" id="tab-coeffs">
+  <div class="row g-3">
+    <div class="col-lg-7">
+      <div class="calc-section">
+        <h6 class="mb-3 fw-semibold">
+          <i class="bi bi-geo-alt me-2 text-primary"></i>Коэффициенты по городам
+        </h6>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Город</th>
+                <th class="text-end" style="width: 180px;">Коэффициент</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for city, coeff in city_coeffs.items %}
+              <tr>
+                <td>{{ city }}</td>
+                <td>
+                  <input
+                    type="number"
+                    class="form-control form-control-sm text-end coeff-city-input"
+                    data-city="{{ city }}"
+                    value="{{ coeff }}"
+                    step="0.01"
+                    min="0"
+                  >
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-5">
+      <div class="calc-section">
+        <h6 class="mb-3 fw-semibold">
+          <i class="bi bi-grid-3x3-gap me-2 text-success"></i>Леса
+        </h6>
+        <div class="mb-3">
+          <label class="form-label small">Сезонный коэффициент (по умолчанию)</label>
+          <input type="number" class="form-control form-control-sm" id="cfg_scaffold_season" value="{{ scaffold_defaults.season_coeff }}" step="0.01" min="0">
+        </div>
+        <div class="mb-3">
+          <label class="form-label small">Коэффициент цен (AI30, по умолчанию)</label>
+          <input type="number" class="form-control form-control-sm" id="cfg_scaffold_price" value="{{ scaffold_defaults.price_coeff }}" step="0.01" min="0">
+        </div>
+
+        <h6 class="mb-3 mt-4 fw-semibold">
+          <i class="bi bi-bar-chart-steps me-2 text-warning"></i>Вышки-туры
+        </h6>
+        <div class="mb-3">
+          <label class="form-label small">Коэффициент модели ПСРВ-21</label>
+          <input type="number" class="form-control form-control-sm" id="cfg_tower_coeff_21" value="{{ tower_coeff_psrv21 }}" step="0.01" min="0">
+        </div>
+        <div class="mb-3">
+          <label class="form-label small">Коэффициент модели ПСРВ-22</label>
+          <input type="number" class="form-control form-control-sm" id="cfg_tower_coeff_22" value="{{ tower_coeff_psrv22 }}" step="0.01" min="0">
+        </div>
+        <div class="mb-3">
+          <label class="form-label small">Доп. наценка ПСРВ-22 (руб.)</label>
+          <input type="number" class="form-control form-control-sm" id="cfg_tower_extra_22" value="{{ tower_extra_psrv22 }}" step="1" min="0">
+        </div>
+
+        <button class="btn btn-primary w-100" id="saveCoeffSettings">
+          <i class="bi bi-save me-2"></i>Сохранить коэффициенты
+        </button>
+        <div class="small text-muted mt-2" id="coeffSaveStatus"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 </div><!-- tab-content -->
 {% endblock %}
 
@@ -336,6 +418,21 @@ const fmtN = n => Number(n).toLocaleString('ru-RU', {maximumFractionDigits:2});
 
 function getCSRF() {
   return document.cookie.split(';').map(c=>c.trim()).find(c=>c.startsWith('csrftoken='))?.split('=')[1] || '';
+}
+
+function applySavedCoeffDefaults(data) {
+  if (!data) return;
+  if (data.scaffold_defaults) {
+    document.getElementById('s_season_coeff').value = data.scaffold_defaults.season_coeff;
+    document.getElementById('s_price_coeff').value = data.scaffold_defaults.price_coeff;
+  }
+  if (data.tower_coeffs) {
+    const modelSelect = document.getElementById('t_model');
+    const option21 = modelSelect.querySelector('option[value="ПСРВ-21"]');
+    const option22 = modelSelect.querySelector('option[value="ПСРВ-22"]');
+    if (option21) option21.textContent = `ПСРВ-21 (коэф. ${data.tower_coeffs['ПСРВ-21']})`;
+    if (option22) option22.textContent = `ПСРВ-22 (коэф. ${data.tower_coeffs['ПСРВ-22']})`;
+  }
 }
 
 // Scaffolding area preview
@@ -468,6 +565,42 @@ document.getElementById('calcTower').addEventListener('click', async () => {
 
   document.getElementById('t_result').style.display = '';
   document.getElementById('t_placeholder').style.display = 'none';
+});
+
+document.getElementById('saveCoeffSettings').addEventListener('click', async () => {
+  const statusEl = document.getElementById('coeffSaveStatus');
+  statusEl.textContent = 'Сохраняем...';
+  statusEl.className = 'small text-muted mt-2';
+
+  const cityCoefficients = {};
+  document.querySelectorAll('.coeff-city-input').forEach(input => {
+    cityCoefficients[input.dataset.city] = parseFloat(input.value || '1');
+  });
+
+  const payload = {
+    city_coefficients: cityCoefficients,
+    scaffold_season_coeff_default: parseFloat(document.getElementById('cfg_scaffold_season').value || '1'),
+    scaffold_price_coeff_default: parseFloat(document.getElementById('cfg_scaffold_price').value || '1'),
+    tower_psrv21_model_coeff: parseFloat(document.getElementById('cfg_tower_coeff_21').value || '1'),
+    tower_psrv22_model_coeff: parseFloat(document.getElementById('cfg_tower_coeff_22').value || '1'),
+    tower_psrv22_extra_charge: parseFloat(document.getElementById('cfg_tower_extra_22').value || '0'),
+  };
+
+  const resp = await fetch('{% url "save_coefficients_ajax" %}', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCSRF()},
+    body: JSON.stringify(payload),
+  });
+  const data = await resp.json();
+  if (!data.ok) {
+    statusEl.textContent = 'Ошибка: ' + data.error;
+    statusEl.className = 'small text-danger mt-2';
+    return;
+  }
+
+  applySavedCoeffDefaults(data.coefficients);
+  statusEl.textContent = 'Коэффициенты сохранены и применяются в новых расчётах.';
+  statusEl.className = 'small text-success mt-2';
 });
 </script>
 {% endblock %}

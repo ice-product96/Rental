@@ -15,7 +15,7 @@ from .models import (
 from clients.models import Client
 from equipment.models import EquipmentType, WarehouseStock, EquipmentMovement
 from pricing.models import EquipmentCategory
-from pricing.calculator import CITY_COEFFICIENTS, TOWER_HEIGHT_SECTIONS
+from pricing.calculator import get_city_coefficients, get_scaffolding_default_coeffs, TOWER_HEIGHT_SECTIONS
 from documents.models import OurLegalEntity
 
 
@@ -356,7 +356,7 @@ def deal_detail(request, pk):
 def deal_create(request):
     clients = Client.objects.order_by('name')
     categories = EquipmentCategory.objects.filter(is_active=True).prefetch_related('equipment_types')
-    cities = list(CITY_COEFFICIENTS.keys())
+    cities = list(get_city_coefficients().keys())
     tower_heights = [h for h, s in TOWER_HEIGHT_SECTIONS]
 
     stock_snapshot = {}
@@ -427,6 +427,7 @@ def _handle_deal_create_post(request):
     }
 
     section_count = int(request.POST.get('section_count', 0))
+    scaffold_defaults = get_scaffolding_default_coeffs()
 
     for sec_idx in range(section_count):
         prefix = f's{sec_idx}'
@@ -450,10 +451,10 @@ def _handle_deal_create_post(request):
             ]
             pricing_params = {
                 'sides': sides,
-                'season_coeff': float(request.POST.get(f'{prefix}_season_coeff', 1.2)),
+                'season_coeff': float(request.POST.get(f'{prefix}_season_coeff', scaffold_defaults['season_coeff'])),
                 'diagonal_mode': request.POST.get(f'{prefix}_diagonal_mode', 'every'),
                 'planks_qty': int(request.POST.get(f'{prefix}_planks_qty', 4) or 4),
-                'price_coeff': float(request.POST.get(f'{prefix}_price_coeff', 1.15)),
+                'price_coeff': float(request.POST.get(f'{prefix}_price_coeff', scaffold_defaults['price_coeff'])),
                 'bracket_qty': int(request.POST.get(f'{prefix}_bracket_qty', 0) or 0),
                 'base_plate_qty': int(request.POST.get(f'{prefix}_base_plate_qty', 0) or 0),
             }

@@ -6,7 +6,8 @@ from .calculator import (
     calculate_scaffolding as _calc_scaffolding,
     calculate_tower as _calc_tower,
     roundup,
-    CITY_COEFFICIENTS,
+    get_city_coefficients,
+    get_scaffolding_default_coeffs,
     TOWER_HEIGHT_SECTIONS,
 )
 
@@ -18,17 +19,18 @@ class AreaBasedAlgorithm:
 
     def calculate(self, pricing_params, deal_context, equipment_items=None):
         sides = pricing_params.get('sides', [])
+        defaults = get_scaffolding_default_coeffs()
         raw = _calc_scaffolding(
             sides=sides,
             days=deal_context['days'],
             city=deal_context.get('city', 'Екатеринбург'),
-            season_coeff=pricing_params.get('season_coeff', 1.2),
+            season_coeff=pricing_params.get('season_coeff', defaults['season_coeff']),
             diagonal_mode=pricing_params.get('diagonal_mode', 'every'),
             planks_qty=pricing_params.get('planks_qty', 4),
             deposit_pct=deal_context.get('deposit_pct', 10),
             delivery_cost=deal_context.get('delivery_cost', 0),
             vat_mode=deal_context.get('vat_mode', 'no_vat'),
-            price_coeff=pricing_params.get('price_coeff', 1.15),
+            price_coeff=pricing_params.get('price_coeff', defaults['price_coeff']),
             bracket_qty=pricing_params.get('bracket_qty', 0),
             base_plate_qty=pricing_params.get('base_plate_qty', 0),
         )
@@ -88,7 +90,7 @@ class DailyRateAlgorithm:
         delivery_cost = float(deal_context.get('delivery_cost', 0))
         vat_mode = deal_context.get('vat_mode', 'no_vat')
         city = deal_context.get('city', 'Екатеринбург')
-        city_coeff = CITY_COEFFICIENTS.get(city, 1.0)
+        city_coeff = get_city_coefficients().get(city, 1.0)
 
         items_out = []
         market_value = 0.0
