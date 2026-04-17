@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+{% block nav_delivery %}active{% endblock %}
+{% block content %}
+
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header"><strong>{{ page_title }}</strong></div>
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+          {{ form|crispy }}
+          <div class="d-flex gap-2 mt-3">
+            <button type="submit" class="btn btn-primary">Сохранить</button>
+            <a href="{% url 'driver_list' %}" class="btn btn-outline-secondary">Отмена</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

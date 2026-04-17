@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block nav_billing %}active{% endblock %}
+{% block content %}
+<div class="row">
+  <div class="col-lg-8">
+    <div class="card mb-3">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Счёт №{{ invoice.number }} от {{ invoice.date|date:"d.m.Y" }}</span>
+        <span class="badge bg-{{ invoice.status_color }}">{{ invoice.get_status_display }}</span>
+      </div>
+      <div class="card-body">
+        <div class="row g-2 small mb-3">
+          <div class="col-md-6"><strong>Сделка:</strong> <a href="{% url 'deal_detail' invoice.deal.pk %}">№{{ invoice.deal.number }}</a></div>
+          <div class="col-md-6"><strong>Клиент:</strong> {{ invoice.deal.client.name }}</div>
+          <div class="col-md-6"><strong>Тип:</strong> {{ invoice.get_invoice_type_display }}</div>
+          {% if invoice.due_date %}<div class="col-md-6"><strong>Срок оплаты:</strong> {{ invoice.due_date|date:"d.m.Y" }}</div>{% endif %}
+        </div>
+        <table class="table table-sm">
+          <thead><tr><th>Наименование</th><th class="text-end">Кол-во</th><th>Ед.</th><th class="text-end">Цена</th><th class="text-end">Сумма</th></tr></thead>
+          <tbody>
+            {% for item in invoice.items.all %}
+            <tr>
+              <td>{{ item.name }}</td>
+              <td class="text-end">{{ item.qty|floatformat:2 }}</td>
+              <td>{{ item.unit }}</td>
+              <td class="text-end">{{ item.price|floatformat:0 }} ₽</td>
+              <td class="text-end">{{ item.total|floatformat:0 }} ₽</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot>
+            {% if invoice.vat_amount %}
+            <tr><td colspan="4" class="text-end">НДС 20%:</td><td class="text-end">{{ invoice.vat_amount|floatformat:0 }} ₽</td></tr>
+            {% endif %}
+            <tr class="fw-bold"><td colspan="4" class="text-end">ИТОГО:</td><td class="text-end fs-5 text-primary">{{ invoice.total|floatformat:0 }} ₽</td></tr>
+          </tfoot>
+        </table>
+        <div class="text-muted small">{{ amount_words }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card mb-3">
+      <div class="card-header">Действия</div>
+      <div class="list-group list-group-flush">
+        <a href="{% url 'invoice_print' invoice.pk %}" class="list-group-item list-group-item-action" target="_blank">
+          <i class="bi bi-printer me-2"></i>Печать счёта
+        </a>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">Изменить статус</div>
+      <div class="card-body">
+        <form method="post" action="{% url 'invoice_status_change' invoice.pk %}">
+          {% csrf_token %}
+          <select class="form-select form-select-sm mb-2" name="status">
+            <option value="draft">Черновик</option>
+            <option value="sent">Отправлен</option>
+            <option value="paid">Оплачен</option>
+            <option value="overdue">Просрочен</option>
+            <option value="cancelled">Отменён</option>
+          </select>
+          <button type="submit" class="btn btn-sm btn-primary w-100">Применить</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

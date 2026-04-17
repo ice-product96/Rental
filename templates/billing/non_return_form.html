@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+<div class="col-lg-9">
+  <div class="card border-danger">
+    <div class="card-header text-danger fw-bold">Акт невозврата — сделка №{{ deal.number }}</div>
+    <div class="card-body">
+      <div class="alert alert-warning">Данный акт фиксирует факт невозврата оборудования. После создания статус сделки изменится на «Акт невозврата».</div>
+      <form method="post">
+        {% csrf_token %}
+        <div class="row g-2 mb-3">
+          <div class="col-md-4">
+            <label class="form-label small">Номер акта</label>
+            <input type="text" class="form-control form-control-sm" name="number" value="{{ deal.number }}" required>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small">Дата</label>
+            <input type="date" class="form-control form-control-sm" name="date" value="{{ today|date:'Y-m-d' }}" required>
+          </div>
+          <div class="col-12">
+            <label class="form-label small">Примечания</label>
+            <textarea class="form-control form-control-sm" name="notes" rows="2"></textarea>
+          </div>
+        </div>
+        <table class="table table-sm">
+          <thead><tr><th>Оборудование</th><th class="text-end">Выдано</th><th class="text-end">Цена ед.</th><th style="width:140px">Возвращено</th><th class="text-end">Не возвращено</th></tr></thead>
+          <tbody>
+            {% for item in equipment_items %}
+            <tr>
+              <td>{{ item.equipment_type.name }}</td>
+              <td class="text-end">{{ item.quantity }}</td>
+              <td class="text-end">{{ item.unit_price|floatformat:0 }} ₽</td>
+              <td>
+                <input type="number" class="form-control form-control-sm" name="qty_ret_{{ item.pk }}"
+                       value="0" min="0" max="{{ item.quantity }}"
+                       onchange="calcNR(this, {{ item.quantity }}, {{ item.unit_price }})">
+              </td>
+              <td class="text-end fw-semibold text-danger" id="nr_{{ item.pk }}">
+                {{ item.quantity }} × {{ item.unit_price|floatformat:0 }} = {{ item.total_value|floatformat:0 }} ₽
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-danger">Создать акт невозврата</button>
+          <a href="{% url 'deal_detail' deal.pk %}" class="btn btn-secondary">Отмена</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+function calcNR(input, issued, price) {
+  const returned = parseInt(input.value)||0;
+  const remaining = issued - returned;
+  const cell = input.closest('tr').querySelector('[id^="nr_"]');
+  cell.textContent = remaining + ' × ' + price.toFixed(0) + ' = ' + (remaining*price).toFixed(0) + ' ₽';
+}
+</script>
+{% endblock %}

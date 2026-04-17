@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Акт невозврата №{{ act.number }}</title>
+<style>
+  body { font-family: Arial, sans-serif; font-size: 12px; margin: 20px; }
+  h2 { text-align: center; font-size:15px; }
+  .parties { display: grid; grid-template-columns:1fr 1fr; gap:24px; margin:16px 0; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+  th, td { border: 1px solid #ccc; padding: 5px 8px; }
+  th { background: #f0f0f0; }
+  .text-right { text-align: right; }
+  .total-row { font-weight: bold; }
+  .sum-words { font-style: italic; }
+  .signatures { display: grid; grid-template-columns:1fr 1fr; gap:40px; margin-top:32px; }
+  .sig-line { border-top:1px solid #333; margin-top:30px; padding-top:4px; font-size:11px; }
+  @media print { button { display:none; } }
+</style>
+</head>
+<body>
+<button onclick="window.print()">Печать</button>
+<h2>АКТ О НЕВОЗВРАТЕ ИМУЩЕСТВА №{{ act.number }}<br>от {{ act.date|date:"«d» F Y г." }}</h2>
+
+<div class="parties">
+  <div><strong>Арендодатель:</strong><br>{{ company.name }}, ИНН {{ company.inn }}<br>{{ company.address }}</div>
+  <div><strong>Арендатор:</strong><br>{{ act.deal.client.name }}<br>{{ act.deal.client.address }}</div>
+</div>
+
+<p>Составлен в связи с невозвратом арендованного имущества по сделке №{{ act.deal.number }}
+от {{ act.deal.created_at|date:"d.m.Y" }}.</p>
+
+<table>
+  <thead>
+    <tr><th>№</th><th>Наименование</th><th class="text-right">Выдано</th><th class="text-right">Возвращено</th><th class="text-right">Не возвращено</th><th class="text-right">Цена ед.</th><th class="text-right">Сумма</th></tr>
+  </thead>
+  <tbody>
+    {% for item in act.items.all %}
+    <tr>
+      <td>{{ forloop.counter }}</td>
+      <td>{{ item.equipment_type.name }}</td>
+      <td class="text-right">{{ item.quantity_issued }}</td>
+      <td class="text-right">{{ item.quantity_returned }}</td>
+      <td class="text-right">{{ item.quantity_not_returned }}</td>
+      <td class="text-right">{{ item.unit_price|floatformat:2 }}</td>
+      <td class="text-right">{{ item.total_value|floatformat:2 }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+  <tfoot>
+    <tr class="total-row">
+      <td colspan="6" class="text-right">ИТОГО к возмещению:</td>
+      <td class="text-right">{{ act.total_amount|floatformat:2 }} руб.</td>
+    </tr>
+  </tfoot>
+</table>
+<div class="sum-words">{{ amount_words }}</div>
+
+{% if act.notes %}<p>{{ act.notes }}</p>{% endif %}
+
+<div class="signatures">
+  <div><strong>Арендодатель:</strong><div class="sig-line">{{ company.director_short }} _______________</div></div>
+  <div><strong>Арендатор:</strong><div class="sig-line">_______________________</div></div>
+</div>
+</body>
+</html>

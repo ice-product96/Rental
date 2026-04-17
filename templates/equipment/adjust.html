@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block nav_warehouse %}active{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+<div class="col-md-6">
+  <div class="card">
+    <div class="card-header">Корректировка склада: {{ stock.equipment_type.name }}</div>
+    <div class="card-body">
+      <div class="row g-2 mb-4 text-center">
+        <div class="col-3"><div class="fw-bold fs-4">{{ stock.quantity_total }}</div><div class="small text-muted">Всего</div></div>
+        <div class="col-3"><div class="fw-bold fs-4 text-success">{{ stock.quantity_available }}</div><div class="small text-muted">Доступно</div></div>
+        <div class="col-3"><div class="fw-bold fs-4 text-warning">{{ stock.quantity_reserved }}</div><div class="small text-muted">Резерв</div></div>
+        <div class="col-3"><div class="fw-bold fs-4 text-danger">{{ stock.quantity_rented }}</div><div class="small text-muted">Аренда</div></div>
+      </div>
+      <form method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+          <label class="form-label">Действие</label>
+          <select class="form-select" name="action" required>
+            <option value="add">Поступление на склад</option>
+            <option value="writeoff">Списание</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Количество</label>
+          <input type="number" class="form-control" name="qty" min="1" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Примечание</label>
+          <input type="text" class="form-control" name="notes">
+        </div>
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary">Применить</button>
+          <a href="{% url 'warehouse_list' %}" class="btn btn-secondary">Отмена</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+</div>
+{% endblock %}

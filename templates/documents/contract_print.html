@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Договор №{{ contract.number }}</title>
+  <style>
+    body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; max-width: 210mm; margin: 12mm auto; color: #000; }
+    @media print { body { margin: 0; } }
+  </style>
+</head>
+<body>
+{{ contract.rendered_html|safe }}
+</body>
+</html>

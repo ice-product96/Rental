@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block nav_documents_templates %}active{% endblock %}
+{% block content %}
+<div class="row g-3">
+  <div class="col-lg-4">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-file-earmark-richtext me-1"></i>Договор</span>
+        <span class="badge bg-light text-dark">{{ generated_contracts_count }}</span>
+      </div>
+      <div class="card-body">
+        <p class="text-muted mb-3">Шаблоны и сформированные договоры с привязкой к клиенту/сделке.</p>
+        <div class="d-grid gap-2">
+          <a href="{% url 'documents_contract_template_list' %}" class="btn btn-sm btn-outline-secondary">Шаблоны договора ({{ contract_templates_count }})</a>
+          <a href="{% url 'documents_contract_list' %}" class="btn btn-sm btn-outline-secondary">Сформированные договоры</a>
+          <a href="{% url 'documents_contract_create' %}" class="btn btn-sm btn-primary">Создать договор</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-receipt me-1"></i>Счёт</span>
+        <span class="badge bg-light text-dark">{{ invoices_count }}</span>
+      </div>
+      <div class="card-body">
+        <p class="text-muted mb-3">Форма создания счета и печатная форма для оплаты.</p>
+        <div class="d-grid gap-2">
+          <a href="{% url 'documents_invoice_template_list' %}" class="btn btn-sm btn-outline-secondary">Шаблоны счета ({{ invoice_templates_count }})</a>
+          <a href="{% url 'invoice_list' %}" class="btn btn-sm btn-outline-secondary">Список счетов</a>
+          <a href="{% url 'deal_list' %}" class="btn btn-sm btn-primary">Создать счёт из сделки</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-clipboard-check me-1"></i>Акт</span>
+        <span class="badge bg-light text-dark">{{ shipping_acts_count|add:non_return_acts_count }}</span>
+      </div>
+      <div class="card-body">
+        <p class="text-muted mb-3">Акты выдачи/возврата и акты невозврата по сделкам.</p>
+        <div class="d-grid gap-2">
+          <a href="{% url 'documents_act_template_list' %}" class="btn btn-sm btn-outline-secondary">Шаблоны акта ({{ act_templates_count }})</a>
+          <a href="{% url 'deal_list' %}" class="btn btn-sm btn-primary">Создать акт по сделке</a>
+          <div class="small text-muted">
+            Уже создано: отгрузка/возврат — {{ shipping_acts_count }}, невозврат — {{ non_return_acts_count }}.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

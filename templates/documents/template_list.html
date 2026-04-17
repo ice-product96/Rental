@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block nav_documents_templates %}active{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <div class="d-flex gap-2">
+    <a href="{% url 'documents_template_list' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>К типам документов</a>
+    <form class="d-flex gap-2" method="get">
+      <input type="search" class="form-control form-control-sm" name="q" value="{{ q }}" placeholder="Поиск..." style="max-width:220px">
+      <button class="btn btn-sm btn-outline-secondary" type="submit"><i class="bi bi-search"></i></button>
+    </form>
+  </div>
+  {% if document_type == 'contract' %}
+    <a href="{% url 'documents_template_create' %}" class="btn btn-primary btn-sm"><i class="bi bi-file-earmark-plus me-1"></i>Новый шаблон</a>
+  {% elif document_type == 'invoice' %}
+    <a href="{% url 'documents_invoice_template_create' %}" class="btn btn-primary btn-sm"><i class="bi bi-file-earmark-plus me-1"></i>Новый шаблон</a>
+  {% else %}
+    <a href="{% url 'documents_act_template_create' %}" class="btn btn-primary btn-sm"><i class="bi bi-file-earmark-plus me-1"></i>Новый шаблон</a>
+  {% endif %}
+</div>
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr><th>Шаблон</th><th>Код</th><th>Статус</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for t in templates %}
+        <tr>
+          <td class="fw-semibold">{{ t.name }}</td>
+          <td><code>{{ t.slug }}</code></td>
+          <td>{% if t.is_active %}<span class="badge bg-success">Активен</span>{% else %}<span class="badge bg-secondary">Выкл</span>{% endif %}</td>
+          <td class="text-end">
+            {% if document_type == 'contract' %}
+              <a href="{% url 'documents_template_edit' t.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+            {% elif document_type == 'invoice' %}
+              <a href="{% url 'documents_invoice_template_edit' t.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+            {% else %}
+              <a href="{% url 'documents_act_template_edit' t.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" class="text-center text-muted py-4">Шаблонов пока нет</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

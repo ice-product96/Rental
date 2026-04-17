@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block nav_deals %}active{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+<div class="col-lg-8">
+  <div class="card mb-3">
+    <div class="card-header">Частичный возврат — сделка №{{ deal.number }}</div>
+    <div class="card-body">
+      <form method="post">
+        {% csrf_token %}
+        <div class="row g-2 mb-3">
+          <div class="col-md-4">
+            <label class="form-label small">Дата возврата</label>
+            <input type="date" class="form-control form-control-sm" name="return_date" value="{{ today|date:'Y-m-d' }}" required>
+          </div>
+          <div class="col-12">
+            <label class="form-label small">Примечания</label>
+            <input type="text" class="form-control form-control-sm" name="notes">
+          </div>
+        </div>
+
+        <div class="alert alert-light border small py-2">
+          Выдано: <strong>{{ total_issued }}</strong> |
+          Уже возвращено: <strong class="text-success">{{ total_returned }}</strong> |
+          В аренде сейчас: <strong class="text-warning">{{ total_remaining }}</strong> |
+          Текущая суточная аренда: <strong>{{ current_daily_before|floatformat:0 }} ₽/сутки</strong> |
+          Период расчета от: <strong>{{ period_start|date:"d.m.Y" }}</strong>
+        </div>
+
+        <table class="table table-sm">
+          <thead>
+            <tr>
+              <th>Наименование</th>
+              <th class="text-end">Выдано</th>
+              <th class="text-end">Уже возвращено</th>
+              <th class="text-end">В аренде</th>
+              <th class="text-end">Ставка/сутки</th>
+              <th class="text-end">Суточно сейчас</th>
+              <th style="width:120px">Возвращается сейчас</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in items_with_remaining %}
+            <tr>
+              <td>{{ row.item.equipment_type.name }}</td>
+              <td class="text-end">{{ row.item.quantity }}</td>
+              <td class="text-end text-success">{{ row.already_returned }}</td>
+              <td class="text-end {% if row.remaining > 0 %}text-warning fw-bold{% endif %}">{{ row.remaining }}</td>
+              <td class="text-end">{{ row.item.daily_rental_rate|floatformat:0 }} ₽</td>
+              <td class="text-end">{{ row.current_daily_cost|floatformat:0 }} ₽</td>
+              <td>
+                {% if row.remaining > 0 %}
+                <input type="number" class="form-control form-control-sm"
+                       name="qty_{{ row.item.pk }}" value="0"
+                       min="0" max="{{ row.remaining }}">
+                {% else %}
+                <span class="text-muted small">—</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-success">
+            <i class="bi bi-arrow-return-left me-2"></i>Оформить возврат
+          </button>
+          <a href="{% url 'deal_detail' deal.pk %}" class="btn btn-secondary">Отмена</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+</div>
+{% endblock %}

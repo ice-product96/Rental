@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block nav_delivery %}active{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div class="d-flex gap-2 flex-wrap">
+    <form method="get" class="d-flex gap-2 flex-wrap">
+      <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm" placeholder="Сделка, клиент, водитель, номер...">
+      <select name="status" class="form-select form-select-sm" style="width:auto">
+        <option value="">— все статусы —</option>
+        {% for val, label in status_choices %}
+        <option value="{{ val }}" {% if status_filter == val %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <select name="direction" class="form-select form-select-sm" style="width:auto">
+        <option value="">— все направления —</option>
+        <option value="delivery" {% if direction_filter == "delivery" %}selected{% endif %}>Отгрузка</option>
+        <option value="return" {% if direction_filter == "return" %}selected{% endif %}>Возврат</option>
+      </select>
+      <button type="submit" class="btn btn-sm btn-outline-secondary">Фильтр</button>
+      {% if q or status_filter or direction_filter %}
+      <a href="{% url 'delivery_list' %}" class="btn btn-sm btn-outline-danger">✕</a>
+      {% endif %}
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover table-sm mb-0 align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>#</th>
+          <th>Сделка</th>
+          <th>Клиент</th>
+          <th>Направление</th>
+          <th>Водитель</th>
+          <th>Машина</th>
+          <th>Дата плановая</th>
+          <th>Статус</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in deliveries %}
+        <tr>
+          <td class="text-muted small">{{ d.pk }}</td>
+          <td><a href="{% url 'deal_detail' d.deal.pk %}">№{{ d.deal.number }}</a></td>
+          <td class="small">{{ d.deal.client.name }}</td>
+          <td>
+            {% if d.direction == 'delivery' %}
+            <span class="badge bg-info text-dark"><i class="bi bi-truck me-1"></i>Отгрузка</span>
+            {% else %}
+            <span class="badge bg-warning text-dark"><i class="bi bi-arrow-return-left me-1"></i>Возврат</span>
+            {% endif %}
+          </td>
+          <td class="small">{{ d.driver.full_name|default:"—" }}</td>
+          <td class="small">{{ d.vehicle|default:"—" }}</td>
+          <td class="small">{{ d.planned_date|date:"d.m.Y" }}{% if d.planned_time %} {{ d.planned_time|time:"H:i" }}{% endif %}</td>
+          <td><span class="badge bg-{{ d.status_color }}">{{ d.status_label }}</span></td>
+          <td><a href="{% url 'delivery_detail' d.pk %}" class="btn btn-sm btn-outline-secondary">Открыть</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="9" class="text-center text-muted py-4">Рейсов не найдено</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

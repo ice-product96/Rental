@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block nav_documents %}active{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <div class="small text-muted">
+    {% if filter_client_id %}Фильтр по клиенту #{{ filter_client_id }}{% endif %}
+  </div>
+  <a href="{% url 'documents_contract_create' %}{% if filter_client_id %}?client={{ filter_client_id }}{% endif %}" class="btn btn-primary btn-sm"><i class="bi bi-file-earmark-text me-1"></i>Новый договор</a>
+</div>
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr><th>Номер</th><th>Дата</th><th>Клиент</th><th>Шаблон</th><th>Сделка</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for c in contracts %}
+        <tr>
+          <td class="fw-semibold">{{ c.number }}</td>
+          <td>{{ c.contract_date|date:"d.m.Y" }}</td>
+          <td><a href="{% url 'client_detail' c.client.pk %}">{{ c.client.name }}</a></td>
+          <td class="small">{{ c.template.name }}</td>
+          <td class="small">
+            {% if c.deal %}<a href="{% url 'deal_detail' c.deal.pk %}">№{{ c.deal.number }}</a>{% else %}—{% endif %}
+          </td>
+          <td class="text-end">
+            <a href="{% url 'documents_contract_detail' c.pk %}" class="btn btn-sm btn-outline-primary">Открыть</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-center text-muted py-4">Договоров пока нет</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

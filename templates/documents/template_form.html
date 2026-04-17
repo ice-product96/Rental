@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+{% block nav_documents_templates %}active{% endblock %}
+{% block content %}
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header">{{ page_title }}</div>
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+          {% crispy form %}
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header">Подсказка по переменным</div>
+      <div class="card-body small">
+        {% if document_type == 'contract' %}
+          <p class="text-muted">Синтаксис Django Template. Контекст: <code>our</code>, <code>client</code>, опционально <code>deal</code>, и <code>contract</code> (номер и дата).</p>
+          {% verbatim %}
+          <ul class="mb-0 ps-3 font-monospace">
+            <li>{{ our.name }}, {{ our.inn }}, {{ our.company_full_name }}</li>
+            <li>{{ client.name }}, {{ client.inn }}, {{ client.legal_address }}</li>
+            <li>{% if deal %}{{ deal.number }}, {{ deal.grand_total }}{% endif %}</li>
+            <li>{{ contract.number }}, {{ contract.date|date:"d.m.Y" }}</li>
+          </ul>
+          {% endverbatim %}
+        {% elif document_type == 'invoice' %}
+          <p class="text-muted">Контекст шаблона счета: <code>invoice</code>, <code>company</code>, <code>amount_words</code>.</p>
+          {% verbatim %}
+          <ul class="mb-0 ps-3 font-monospace">
+            <li>{{ invoice.number }}, {{ invoice.date|date:"d.m.Y" }}, {{ invoice.total }}</li>
+            <li>{{ invoice.deal.number }}, {{ invoice.deal.client.name }}</li>
+            <li>{{ company.full_name }}, {{ company.inn }}, {{ company.account }}</li>
+            <li>{{ amount_words }}</li>
+          </ul>
+          {% endverbatim %}
+        {% else %}
+          <p class="text-muted">Контекст шаблона акта: <code>doc</code>/<code>act</code>, <code>company</code>, <code>amount_words</code>.</p>
+          {% verbatim %}
+          <ul class="mb-0 ps-3 font-monospace">
+            <li>{{ doc.number }}, {{ doc.date|date:"d.m.Y" }}, {{ doc.deal.number }}</li>
+            <li>{{ act.number }}, {{ act.date|date:"d.m.Y" }}, {{ act.total_amount }}</li>
+            <li>{{ company.name }}, {{ company.inn }}</li>
+            <li>{{ amount_words }}</li>
+          </ul>
+          {% endverbatim %}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block nav_documents %}active{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <div>
+    <h5 class="mb-0">Договор №{{ contract.number }}</h5>
+    <div class="small text-muted">от {{ contract.contract_date|date:"d.m.Y" }} · {{ contract.client.name }}</div>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'documents_contract_print' contract.pk %}" target="_blank" class="btn btn-outline-secondary btn-sm"><i class="bi bi-printer me-1"></i>Печать</a>
+    <a href="{% url 'client_detail' contract.client.pk %}" class="btn btn-outline-primary btn-sm">Клиент</a>
+    {% if contract.deal %}<a href="{% url 'deal_detail' contract.deal.pk %}" class="btn btn-outline-primary btn-sm">Сделка</a>{% endif %}
+  </div>
+</div>
+<div class="card">
+  <div class="card-body contract-body">
+    {{ contract.rendered_html|safe }}
+  </div>
+</div>
+{% endblock %}

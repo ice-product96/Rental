@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block nav_documents_our %}active{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <p class="text-muted small mb-0">Реквизиты исполнителя для подстановки в шаблоны (объект <code>our</code>).</p>
+  <a href="{% url 'documents_our_entity_create' %}" class="btn btn-primary btn-sm"><i class="bi bi-building-add me-1"></i>Добавить</a>
+</div>
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr><th>Наименование</th><th>Тип</th><th>ИНН</th><th>По умолчанию</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for e in entities %}
+        <tr>
+          <td class="fw-semibold">{{ e.name }}</td>
+          <td>{% if e.is_company %}<span class="badge bg-primary">Юр. лицо</span>{% else %}<span class="badge bg-secondary">Физ. / ИП</span>{% endif %}</td>
+          <td class="small text-muted">{{ e.inn|default:"—" }}</td>
+          <td>{% if e.is_default %}<span class="badge bg-success">Да</span>{% else %}—{% endif %}</td>
+          <td class="text-end">
+            <a href="{% url 'documents_our_entity_edit' e.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="text-center text-muted py-4">Добавьте хотя бы один профиль исполнителя</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block nav_movements %}active{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-header"><i class="bi bi-arrow-left-right me-2"></i>Движение оборудования (последние 100)</div>
+  <div class="table-responsive">
+    <table class="table table-hover table-sm align-middle mb-0">
+      <thead>
+        <tr><th>Дата</th><th>Операция</th><th>Оборудование</th><th class="text-end">Кол-во</th><th>Сделка</th><th>Примечание</th></tr>
+      </thead>
+      <tbody>
+        {% for m in movements %}
+        <tr>
+          <td class="text-muted small">{{ m.date|date:"d.m.Y H:i" }}</td>
+          <td>
+            {% if m.movement_type in 'out_rent,out_reserve' %}
+              <span class="badge bg-danger">{{ m.get_movement_type_display }}</span>
+            {% elif m.movement_type in 'return,cancel_reserve,repair_in' %}
+              <span class="badge bg-success">{{ m.get_movement_type_display }}</span>
+            {% elif m.movement_type == 'in' %}
+              <span class="badge bg-primary">{{ m.get_movement_type_display }}</span>
+            {% else %}
+              <span class="badge bg-secondary">{{ m.get_movement_type_display }}</span>
+            {% endif %}
+          </td>
+          <td>{{ m.equipment_type.name }}</td>
+          <td class="text-end fw-semibold">{{ m.quantity }}</td>
+          <td>
+            {% if m.deal %}
+              <a href="{% url 'deal_detail' m.deal.pk %}" class="small">№{{ m.deal.number }}</a>
+            {% else %}—{% endif %}
+          </td>
+          <td class="text-muted small">{{ m.notes }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-center py-4 text-muted">Движений нет</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

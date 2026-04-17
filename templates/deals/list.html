@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block nav_deals %}active{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <form class="d-flex gap-2 flex-wrap" method="get">
+    <input type="search" class="form-control form-control-sm" name="q" value="{{ q }}" placeholder="Поиск..." style="width:200px">
+    <select class="form-select form-select-sm" name="status" style="width:180px" onchange="this.form.submit()">
+      <option value="">Все статусы</option>
+      {% for val, label in status_choices %}
+        <option value="{{ val }}" {% if status == val %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <select class="form-select form-select-sm" name="cat" style="width:180px" onchange="this.form.submit()">
+      <option value="">Все категории</option>
+      {% for c in categories %}
+        <option value="{{ c.id }}" {% if cat == c.id|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn btn-sm btn-outline-secondary" type="submit"><i class="bi bi-search"></i></button>
+  </form>
+  <a href="{% url 'deal_create' %}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>Новая сделка</a>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr><th>№ Сделки</th><th>Клиент</th><th>Категория</th><th>Статус</th><th>Дней</th><th>Сумма</th><th>Возврат</th></tr>
+      </thead>
+      <tbody>
+        {% for deal in deals %}
+        <tr class="{% if deal.is_overdue %}table-danger{% endif %}">
+          <td>
+            <a href="{% url 'deal_detail' deal.pk %}" class="fw-semibold">{{ deal.number }}</a>
+            {% if deal.is_overdue %}<span class="badge bg-danger ms-1">Просрочено</span>{% endif %}
+          </td>
+          <td><a href="{% url 'client_detail' deal.client.pk %}">{{ deal.client.name }}</a></td>
+          <td><span class="badge bg-secondary">{{ deal.category_names }}</span></td>
+          <td><span class="badge bg-{{ deal.status_color }}">{{ deal.status_label }}</span></td>
+          <td>{{ deal.rental_days }}</td>
+          <td class="text-end fw-semibold">{{ deal.grand_total|floatformat:0 }} ₽</td>
+          <td class="text-muted small">
+            {{ deal.end_date|date:"d.m.Y"|default:"—" }}
+            {% if deal.days_remaining is not None %}
+              {% if deal.days_remaining < 0 %}
+                <span class="text-danger">({{ deal.days_overdue }} дн.)</span>
+              {% elif deal.days_remaining <= 3 %}
+                <span class="text-warning">(+{{ deal.days_remaining }}д)</span>
+              {% endif %}
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" class="text-center text-muted py-4">Сделок не найдено</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

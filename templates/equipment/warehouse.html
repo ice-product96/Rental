@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block nav_warehouse %}active{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-header d-flex justify-content-between">
+    <span><i class="bi bi-boxes me-2"></i>Остатки на складе</span>
+    <a href="{% url 'movement_list' %}" class="btn btn-sm btn-outline-secondary">История движений</a>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Наименование</th><th>Категория</th>
+          <th class="text-end">Всего</th>
+          <th class="text-end text-success">Доступно</th>
+          <th class="text-end text-warning">Резерв</th>
+          <th class="text-end text-danger">В аренде</th>
+          <th class="text-end text-secondary">Ремонт</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ws in stocks %}
+        <tr class="{% if ws.is_low_stock %}table-warning{% endif %}">
+          <td>
+            {{ ws.equipment_type.name }}
+            {% if ws.is_low_stock %}<span class="badge bg-warning text-dark ms-1">Мало</span>{% endif %}
+          </td>
+          <td><span class="badge bg-light text-dark">{{ ws.equipment_type.category.name|default:"—" }}</span></td>
+          <td class="text-end fw-semibold">{{ ws.quantity_total }}</td>
+          <td class="text-end text-success fw-bold">{{ ws.quantity_available }}</td>
+          <td class="text-end text-warning">{{ ws.quantity_reserved }}</td>
+          <td class="text-end text-danger">{{ ws.quantity_rented }}</td>
+          <td class="text-end text-secondary">{{ ws.quantity_repair }}</td>
+          <td class="text-end">
+            <a href="{% url 'stock_adjust' ws.pk %}" class="btn btn-sm btn-outline-secondary">Корректировка</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="8" class="text-center text-muted py-4">Склад пуст. Добавьте оборудование через <a href="/admin/">администрирование</a>.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

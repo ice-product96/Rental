@@ -1,0 +1,145 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}{{ page_title|default:"УПСК — CRM" }}{% endblock %} | УПСК CRM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+<link href="{% static 'css/app.css' %}" rel="stylesheet">
+{% block extra_css %}{% endblock %}
+</head>
+<body>
+
+<div class="sidebar-backdrop" aria-hidden="true"></div>
+
+<nav class="sidebar" id="appSidebar" aria-label="Основное меню">
+  <a href="{% url 'dashboard' %}" class="sidebar-brand">
+    <i class="bi bi-building"></i> УПСК <span>CRM</span>
+  </a>
+  <div class="sidebar-nav">
+    <div class="sidebar-section">Главная</div>
+    <a href="{% url 'dashboard' %}" class="nav-link {% block nav_dashboard %}{% endblock %}">
+      <i class="bi bi-speedometer2"></i> Дашборд
+    </a>
+    <a href="{% url 'calculator' %}" class="nav-link {% block nav_calc %}{% endblock %}">
+      <i class="bi bi-calculator"></i> Калькулятор
+    </a>
+
+    <div class="sidebar-section">Работа</div>
+    <a href="{% url 'deal_list' %}" class="nav-link {% block nav_deals %}{% endblock %}">
+      <i class="bi bi-file-earmark-text"></i> Сделки
+    </a>
+    <a href="{% url 'client_list' %}" class="nav-link {% block nav_clients %}{% endblock %}">
+      <i class="bi bi-people"></i> Клиенты
+    </a>
+    <a href="{% url 'invoice_list' %}" class="nav-link {% block nav_billing %}{% endblock %}">
+      <i class="bi bi-receipt"></i> Счета
+    </a>
+
+    <div class="sidebar-section">Документы</div>
+    <a href="{% url 'documents_template_list' %}" class="nav-link {% block nav_documents_templates %}{% endblock %}">
+      <i class="bi bi-layout-text-window"></i> Шаблоны
+    </a>
+    <a href="{% url 'documents_our_entity_list' %}" class="nav-link {% block nav_documents_our %}{% endblock %}">
+      <i class="bi bi-building-gear"></i> Наши реквизиты
+    </a>
+
+    <div class="sidebar-section">Склад</div>
+    <a href="{% url 'warehouse_list' %}" class="nav-link {% block nav_warehouse %}{% endblock %}">
+      <i class="bi bi-boxes"></i> Остатки
+    </a>
+    <a href="{% url 'movement_list' %}" class="nav-link {% block nav_movements %}{% endblock %}">
+      <i class="bi bi-arrow-left-right"></i> Движения
+    </a>
+
+    <div class="sidebar-section">Логистика</div>
+    <a href="{% url 'delivery_list' %}" class="nav-link {% block nav_delivery %}{% endblock %}">
+      <i class="bi bi-truck"></i> Рейсы
+    </a>
+    <a href="{% url 'driver_list' %}" class="nav-link {% block nav_drivers %}{% endblock %}">
+      <i class="bi bi-person-badge"></i> Водители
+    </a>
+    <a href="{% url 'vehicle_list' %}" class="nav-link {% block nav_vehicles %}{% endblock %}">
+      <i class="bi bi-car-front"></i> Транспорт
+    </a>
+
+    <div class="sidebar-section">Система</div>
+    <a href="/admin/" class="nav-link">
+      <i class="bi bi-gear"></i> Администрирование
+    </a>
+  </div>
+</nav>
+
+<div class="main-content">
+  <div class="topbar">
+    <button type="button" class="topbar-menu-btn d-lg-none" id="sidebarToggle" aria-label="Открыть меню">
+      <i class="bi bi-list topbar-menu-icon"></i>
+    </button>
+    <h6 class="mb-0 topbar-title">{{ page_title|default:"" }}</h6>
+    <div class="ms-auto d-flex flex-wrap gap-2 align-items-center">
+      <a href="{% url 'deal_create' %}" class="btn btn-sm btn-primary">
+        <i class="bi bi-plus-lg"></i> Новая сделка
+      </a>
+      <a href="{% url 'client_create' %}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-person-plus"></i> Клиент
+      </a>
+    </div>
+  </div>
+
+  <div class="page-body">
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags|default:'info' }}{% endif %} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Закрыть"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    {% block content %}{% endblock %}
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+(function () {
+  var toggle = document.getElementById('sidebarToggle');
+  var backdrop = document.querySelector('.sidebar-backdrop');
+  var sidebar = document.getElementById('appSidebar');
+
+  function closeSidebar() {
+    document.body.classList.remove('sidebar-open');
+  }
+
+  if (toggle) {
+    toggle.addEventListener('click', function () {
+      document.body.classList.toggle('sidebar-open');
+    });
+  }
+  if (backdrop) {
+    backdrop.addEventListener('click', closeSidebar);
+  }
+  if (sidebar) {
+    sidebar.querySelectorAll('a.nav-link').forEach(function (link) {
+      link.addEventListener('click', function () {
+        if (window.matchMedia('(max-width: 991.98px)').matches) {
+          closeSidebar();
+        }
+      });
+    });
+  }
+  window.addEventListener('resize', function () {
+    if (window.matchMedia('(min-width: 992px)').matches) {
+      closeSidebar();
+    }
+  });
+})();
+</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

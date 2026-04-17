@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+{% block nav_deals %}active{% endblock %}
+{% block content %}
+
+<div class="d-flex align-items-center gap-3 mb-3">
+  <h5 class="mb-0">Сделка №{{ deal.number }}</h5>
+  <span class="badge bg-{{ deal.status_color }} fs-6">{{ deal.status_label }}</span>
+  {% if deal.is_overdue %}<span class="badge bg-danger">Просрочена на {{ deal.days_overdue }} дн.</span>{% endif %}
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-8">
+
+    <!-- Основная информация -->
+    <div class="card mb-3">
+      <div class="card-header">Информация о сделке</div>
+      <div class="card-body">
+        <div class="row g-2 small">
+          <div class="col-md-6">
+            <strong>Клиент:</strong>
+            <a href="{% url 'client_detail' deal.client.pk %}">{{ deal.client.name }}</a>
+            <span class="badge bg-{{ deal.client.is_company|yesno:'primary,secondary' }} ms-1">{{ deal.client.type_label }}</span>
+          </div>
+          <div class="col-md-3"><strong>Город:</strong> {{ deal.city }}</div>
+          <div class="col-md-3"><strong>НДС:</strong> {{ deal.get_vat_mode_display }}</div>
+          <div class="col-md-6"><strong>Наша организация:</strong> {{ deal.our_entity.name|default:"—" }}</div>
+          <div class="col-md-3"><strong>Срок:</strong> {{ deal.rental_days }} дн.</div>
+          <div class="col-md-3"><strong>Начало:</strong> {{ deal.start_date|date:"d.m.Y"|default:"—" }}</div>
+          <div class="col-md-3"><strong>Окончание:</strong> {{ deal.end_date|date:"d.m.Y"|default:"—" }}</div>
+          <div class="col-md-3"><strong>Возврат факт:</strong> {{ deal.actual_return_date|date:"d.m.Y"|default:"—" }}</div>
+          {% if deal.total_area %}<div class="col-md-3"><strong>Площадь:</strong> {{ deal.total_area|floatformat:1 }} м²</div>{% endif %}
+          {% if deal.delivery_address %}<div class="col-12"><strong>Доставка:</strong> {{ deal.delivery_address }}</div>{% endif %}
+          {% if deal.notes %}<div class="col-12"><strong>Примечания:</strong> {{ deal.notes }}</div>{% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Разделы оборудования -->
+    {% for sd in sections_data %}
+    <div class="card mb-3" style="border-left: 4px solid #0d6efd">
+      <div class="card-header d-flex justify-content-between align-items-center" style="background:#f0f4ff">
+        <span class="fw-semibold"><i class="bi bi-layers me-2"></i>{{ sd.section.category.name }}</span>
+        <span class="text-muted small">{{ sd.section.total_rental|floatformat:0 }} ₽ аренда</span>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead><tr>
+            <th>Наименование</th><th class="text-end">Кол-во</th>
+            <th class="text-end">Цена ед.</th><th class="text-end">Стоимость</th>
+            <th class="text-end">Возвращено</th><th class="text-end">Остаток</th>
+          </tr></thead>
+          <tbody>
+            {% for row in sd.items %}
+            <tr>
+              <td>{{ row.item.equipment_type.name }}</td>
+              <td class="text-end">{{ row.item.quantity }}</td>
+              <td class="text-end">{{ row.item.unit_price|floatformat:0 }} ₽</td>
+              <td class="text-end">{{ row.item.total_value|floatformat:0 }} ₽</td>
+              <td class="text-end text-success">{{ row.returned }}</td>
+              <td class="text-end {% if row.remaining > 0 %}text-warning fw-semibold{% endif %}">{{ row.remaining }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot>
+            <tr class="table-light small text-muted">
+              <td colspan="2">Суточная: {{ sd.section.daily_cost|floatformat:0 }} ₽</td>
+              <td colspan="2">Аренда {{ deal.rental_days }} дн.: {{ sd.section.total_rental|floatformat:0 }} ₽</td>
+              <td colspan="2">Залог: {{ sd.section.deposit_amount|floatformat:0 }} ₽</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+    {% empty %}
+    <div class="alert alert-warning">Разделы оборудования не добавлены.</div>
+    {% endfor %}
+
+    <!-- Итого -->
+    <div class="card mb-3">
+      <div class="card-header fw-semibold">Финансы</div>
+      <div class="card-body">
+        <div class="row g-1 small">
+          <div class="col-7">Суточная стоимость (всего):</div><div class="col-5 text-end fw-semibold">{{ deal.daily_cost|floatformat:0 }} ₽</div>
+          <div class="col-7">Итого аренда ({{ deal.rental_days }} дн.):</div><div class="col-5 text-end fw-semibold">{{ deal.total_rental|floatformat:0 }} ₽</div>
+          <div class="col-7">Залог ({{ deal.deposit_pct }}%):</div><div class="col-5 text-end">{{ deal.deposit_amount|floatformat:0 }} ₽</div>
+          {% if deal.delivery_cost %}
+          <div class="col-7">Доставка (×2):</div><div class="col-5 text-end">{{ deal.delivery_cost|floatformat:0 }} × 2 ₽</div>
+          {% endif %}
+          <div class="col-7 pt-2 fw-bold border-top">ИТОГО К ОПЛАТЕ:</div>
+          <div class="col-5 pt-2 text-end fw-bold text-primary border-top fs-5">{{ deal.grand_total|floatformat:0 }} ₽</div>
+        </div>
+        <hr>
+        <div class="row g-1 small">
+          <div class="col-7">Текущая суточная аренда (факт):</div>
+          <div class="col-5 text-end fw-semibold">{{ factual_snapshot.current_daily|floatformat:0 }} ₽</div>
+          <div class="col-7">Начислено по закрытым периодам:</div>
+          <div class="col-5 text-end">{{ factual_snapshot.realized_amount|floatformat:0 }} ₽</div>
+          <div class="col-7">Текущий период ({{ factual_snapshot.ongoing_days }} дн. от {{ factual_snapshot.period_start|date:"d.m.Y" }}):</div>
+          <div class="col-5 text-end">{{ factual_snapshot.ongoing_amount|floatformat:0 }} ₽</div>
+          <div class="col-7 pt-2 fw-bold border-top">Фактически начислено аренды:</div>
+          <div class="col-5 pt-2 text-end fw-bold text-success border-top">{{ factual_snapshot.factual_total|floatformat:0 }} ₽</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Частичные возвраты -->
+    {% if partial_returns %}
+    <div class="card mb-3">
+      <div class="card-header">Частичные возвраты</div>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead><tr><th>Дата</th><th>Оборудование</th><th class="text-end">Сумма возврата</th><th>Примечание</th></tr></thead>
+          <tbody>
+            {% for pr in partial_returns %}
+            <tr>
+              <td>{{ pr.return_date|date:"d.m.Y" }}</td>
+              <td>{% for ri in pr.items.all %}{{ ri.equipment_type.name }}: {{ ri.quantity_returned }} шт.<br>{% endfor %}</td>
+              <td class="text-end">{{ pr.amount_paid|floatformat:0 }} ₽</td>
+              <td class="text-muted small">{{ pr.notes }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Рейсы доставки -->
+    <div class="card mb-3">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-truck me-2"></i>Рейсы доставки</span>
+        <a href="{% url 'delivery_create' deal.pk %}" class="btn btn-sm btn-outline-primary">
+          <i class="bi bi-plus-lg"></i> Назначить рейс
+        </a>
+      </div>
+      {% if deliveries %}
+      <div class="table-responsive">
+        <table class="table table-sm mb-0 align-middle">
+          <thead class="table-light"><tr>
+            <th>Направление</th>
+            <th>Дата</th>
+            <th>Водитель</th>
+            <th>Машина</th>
+            <th>Статус</th>
+            <th></th>
+          </tr></thead>
+          <tbody>
+            {% for d in deliveries %}
+            <tr>
+              <td>
+                {% if d.direction == 'delivery' %}
+                <span class="badge bg-info text-dark">Отгрузка</span>
+                {% else %}
+                <span class="badge bg-warning text-dark">Возврат</span>
+                {% endif %}
+              </td>
+              <td class="small">{{ d.planned_date|date:"d.m.Y" }}{% if d.planned_time %} {{ d.planned_time|time:"H:i" }}{% endif %}</td>
+              <td class="small">{{ d.driver.full_name|default:"—" }}</td>
+              <td class="small">
+                {% if d.vehicle %}{{ d.vehicle.name }} <span class="text-muted">{{ d.vehicle.reg_number }}</span>{% else %}—{% endif %}
+              </td>
+              <td><span class="badge bg-{{ d.status_color }}">{{ d.status_label }}</span></td>
+              <td><a href="{% url 'delivery_detail' d.pk %}" class="btn btn-sm btn-outline-secondary">→</a></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="card-body text-muted small">Рейсов нет. <a href="{% url 'delivery_create' deal.pk %}">Назначить</a></div>
+      {% endif %}
+    </div>
+
+    <!-- Документы -->
+    {% if invoices or shipping_docs %}
+    <div class="card mb-3">
+      <div class="card-header">Документы</div>
+      <ul class="list-group list-group-flush">
+        {% for inv in invoices %}
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+          <span><i class="bi bi-receipt me-2"></i>Счёт №{{ inv.number }} от {{ inv.date|date:"d.m.Y" }}</span>
+          <div class="d-flex gap-2 align-items-center">
+            <span class="badge bg-{{ inv.status_color }}">{{ inv.get_status_display }}</span>
+            <span>{{ inv.total|floatformat:0 }} ₽</span>
+            <a href="{% url 'invoice_detail' inv.pk %}" class="btn btn-sm btn-outline-secondary">Открыть</a>
+          </div>
+        </li>
+        {% endfor %}
+        {% for doc in shipping_docs %}
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+          <span><i class="bi bi-truck me-2"></i>{{ doc.get_doc_type_display }} №{{ doc.number }}</span>
+          <a href="{% url 'shipping_doc_print' doc.pk %}" class="btn btn-sm btn-outline-secondary" target="_blank">Печать</a>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+  </div>
+
+  <!-- Правая панель -->
+  <div class="col-lg-4">
+
+    {% if next_statuses %}
+    <div class="card mb-3">
+      <div class="card-header">Изменить статус</div>
+      <div class="card-body">
+        {% for status_val, status_label in next_statuses %}
+        <form method="post" action="{% url 'deal_status_change' deal.pk %}" class="mb-2">
+          {% csrf_token %}
+          <input type="hidden" name="status" value="{{ status_val }}">
+          <div class="input-group input-group-sm">
+            <input type="text" name="notes" class="form-control" placeholder="Комментарий...">
+            <button type="submit" class="btn btn-outline-primary">→ {{ status_label }}</button>
+          </div>
+        </form>
+        {% endfor %}
+        {% if deal.status == 'confirmed' %}
+        <form method="post" action="{% url 'deal_status_change' deal.pk %}" class="mt-2">
+          {% csrf_token %}
+          <input type="hidden" name="status" value="confirmed">
+          <input type="hidden" name="force" value="1">
+          <button type="submit" class="btn btn-sm btn-warning w-100">⚠ Подтвердить принудительно</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card mb-3">
+      <div class="card-header">Действия</div>
+      <div class="list-group list-group-flush">
+        <a href="{% url 'invoice_create' deal.pk %}" class="list-group-item list-group-item-action">
+          <i class="bi bi-receipt me-2 text-warning"></i>Выставить счёт
+        </a>
+        <a href="{% url 'shipping_doc_create' deal.pk %}" class="list-group-item list-group-item-action">
+          <i class="bi bi-truck me-2 text-info"></i>Документ отгрузки
+        </a>
+        <a href="{% url 'delivery_create' deal.pk %}" class="list-group-item list-group-item-action">
+          <i class="bi bi-geo-alt me-2 text-warning"></i>Назначить рейс
+        </a>
+        <a href="{% url 'documents_contract_create' %}?client={{ deal.client.pk }}&deal={{ deal.pk }}" class="list-group-item list-group-item-action">
+          <i class="bi bi-file-earmark-richtext me-2 text-primary"></i>Договор по сделке
+        </a>
+        {% if deal.status == 'rented' or deal.status == 'partial_return' or deal.status == 'overdue' %}
+        <a href="{% url 'partial_return_create' deal.pk %}" class="list-group-item list-group-item-action">
+          <i class="bi bi-arrow-return-left me-2 text-success"></i>Оформить возврат
+        </a>
+        <a href="{% url 'non_return_act_create' deal.pk %}" class="list-group-item list-group-item-action">
+          <i class="bi bi-exclamation-triangle me-2 text-danger"></i>Акт невозврата
+        </a>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">История</div>
+      <ul class="list-group list-group-flush">
+        {% for h in history %}
+        <li class="list-group-item py-2">
+          <div class="d-flex justify-content-between">
+            <small class="text-muted">{{ h.changed_at|date:"d.m.Y H:i" }}</small>
+            <span class="badge bg-secondary">{{ h.new_status }}</span>
+          </div>
+          {% if h.notes %}<div class="small mt-1">{{ h.notes }}</div>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

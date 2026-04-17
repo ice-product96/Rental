@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+{% block nav_delivery %}active{% endblock %}
+{% block content %}
+
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header">
+        <strong>{{ page_title }}</strong>
+        {% if deal %}
+        <span class="text-muted ms-2 small">— <a href="{% url 'deal_detail' deal.pk %}">сделка №{{ deal.number }}</a>, {{ deal.client.name }}</span>
+        {% endif %}
+      </div>
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+          {{ form|crispy }}
+          <div class="d-flex gap-2 mt-3">
+            <button type="submit" class="btn btn-primary">Сохранить</button>
+            {% if delivery %}
+            <a href="{% url 'delivery_detail' delivery.pk %}" class="btn btn-outline-secondary">Отмена</a>
+            {% elif deal %}
+            <a href="{% url 'deal_detail' deal.pk %}" class="btn btn-outline-secondary">Отмена</a>
+            {% else %}
+            <a href="{% url 'delivery_list' %}" class="btn btn-outline-secondary">Отмена</a>
+            {% endif %}
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

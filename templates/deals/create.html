@@ -1,0 +1,579 @@
+{% extends "base.html" %}
+{% block nav_deals %}active{% endblock %}
+{% block extra_css %}
+<style>
+.section-card { border-left: 4px solid #0d6efd; }
+.section-card .card-header { background: #f0f4ff; }
+.stock-ok { color: #198754; font-weight: 600; }
+.stock-warn { color: #dc3545; font-weight: 600; }
+.section-summary { background: #f8f9fa; border-radius: 6px; padding: 10px 14px; font-size: .9rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<form method="post" id="dealForm">
+{% csrf_token %}
+<input type="hidden" name="section_count" id="sectionCount" value="0">
+
+<div class="row g-3">
+  <!-- LEFT: form -->
+  <div class="col-lg-7">
+
+    <!-- Основные параметры сделки -->
+    <div class="card mb-3">
+      <div class="card-header fw-semibold"><i class="bi bi-person me-2"></i>Клиент и параметры</div>
+      <div class="card-body">
+        <div class="row g-2">
+          <div class="col-md-8">
+            <label class="form-label small">Клиент *</label>
+            <select class="form-select form-select-sm" name="client" required>
+              <option value="">— выберите клиента —</option>
+              {% for c in clients %}<option value="{{ c.pk }}">{{ c.name }} ({{ c.type_label }})</option>{% endfor %}
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small">Наша организация *</label>
+            <select class="form-select form-select-sm" name="our_entity" required>
+              <option value="">— выберите организацию —</option>
+              {% for e in our_entities %}
+                <option value="{{ e.pk }}">{{ e.name }}{% if e.is_default %} (по умолчанию){% endif %}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small">Залог %</label>
+            <input type="number" class="form-control form-control-sm" name="deposit_pct" id="depositPct" value="10" min="0">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small">Город</label>
+            <select class="form-select form-select-sm" name="city" id="citySelect">
+              {% for city in cities %}<option>{{ city }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small">Срок (дней)</label>
+            <input type="number" class="form-control form-control-sm" name="rental_days" id="rentalDays" value="30" min="1" required>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small">Дата начала</label>
+            <input type="date" class="form-control form-control-sm" name="start_date" id="startDate">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small">Дата окончания</label>
+            <input type="date" class="form-control form-control-sm" name="end_date" id="endDate">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small">Адрес доставки</label>
+            <input type="text" class="form-control form-control-sm" name="delivery_address">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small">Доставка (1 рейс)</label>
+            <input type="number" class="form-control form-control-sm" name="delivery_cost" id="deliveryCost" value="0" min="0">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small">НДС</label>
+            <select class="form-select form-select-sm" name="vat_mode" id="vatMode">
+              <option value="no_vat">Без НДС</option>
+              <option value="with_vat">С НДС 20%</option>
+            </select>
+          </div>
+          <div class="col-12">
+            <label class="form-label small">Примечания</label>
+            <textarea class="form-control form-control-sm" name="notes" rows="2"></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Разделы оборудования -->
+    <div id="sectionsContainer"></div>
+
+    <!-- Кнопка добавления раздела -->
+    <button type="button" class="btn btn-outline-primary w-100 mb-3" id="btnAddSection">
+      <i class="bi bi-plus-circle me-2"></i>Добавить оборудование / раздел
+    </button>
+
+    <button type="submit" class="btn btn-primary w-100" id="btnSubmit" disabled>
+      <i class="bi bi-check-lg me-2"></i>Создать сделку
+    </button>
+    <div class="text-muted small text-center mt-1">Добавьте хотя бы один раздел и рассчитайте его</div>
+  </div>
+
+  <!-- RIGHT: итог -->
+  <div class="col-lg-5">
+    <div id="totalPanel" style="display:none">
+      <div class="card mb-3">
+        <div class="card-header fw-semibold"><i class="bi bi-boxes me-2"></i>Проверка склада</div>
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead><tr><th>Позиция</th><th class="text-end">Нужно</th><th class="text-end">Склад</th><th class="text-end">Статус</th></tr></thead>
+            <tbody id="stockTbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header fw-semibold"><i class="bi bi-currency-dollar me-2"></i>Итого по сделке</div>
+        <div class="card-body py-2" id="totalBody">
+          <!-- filled by JS -->
+        </div>
+      </div>
+    </div>
+    <div id="totalPlaceholder" class="text-center text-muted py-5">
+      <i class="bi bi-layers display-4 d-block mb-3"></i>
+      Добавьте разделы и рассчитайте
+    </div>
+  </div>
+</div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const categoriesData = {{ categories_json|safe }};
+const stockSnapshot = {{ stock_snapshot|safe }};
+const towerHeights = [{% for h in tower_heights %}{{ h }},{% endfor %}];
+const fmt = n => Number(n).toLocaleString('ru-RU', {maximumFractionDigits: 0}) + ' ₽';
+const fmtN = n => Number(n).toLocaleString('ru-RU', {maximumFractionDigits: 2});
+
+function getCSRF() {
+  return document.cookie.split(';').map(c => c.trim()).find(c => c.startsWith('csrftoken='))?.split('=')[1] || '';
+}
+
+// ---------- Auto end-date ----------
+function recalcEndDate() {
+  const start = document.getElementById('startDate').value;
+  const days = parseInt(document.getElementById('rentalDays').value) || 0;
+  if (start && days) {
+    const d = new Date(start);
+    d.setDate(d.getDate() + days);
+    document.getElementById('endDate').value = d.toISOString().split('T')[0];
+  }
+}
+document.getElementById('startDate').addEventListener('change', recalcEndDate);
+document.getElementById('rentalDays').addEventListener('change', recalcEndDate);
+
+// ---------- Sections ----------
+let nextSectionIdx = 0;
+let sections = {};  // sIdx → {catId, algoCode, calcResult, drRowCount}
+
+function getCatById(id) {
+  return categoriesData.find(c => String(c.id) === String(id));
+}
+
+function addSection() {
+  const sIdx = nextSectionIdx++;
+  sections[sIdx] = { catId: null, algoCode: null, calcResult: null, drRowCount: 0 };
+  document.getElementById('sectionCount').value = Object.keys(sections).length;
+
+  const catOptions = categoriesData.map(c =>
+    `<option value="${c.id}" data-algo="${c.algorithm_code}" data-deposit="${c.deposit_pct}">${c.name}</option>`
+  ).join('');
+
+  const html = `
+  <div class="card mb-3 section-card" id="section_${sIdx}">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <span class="fw-semibold"><i class="bi bi-layers me-2"></i>Раздел ${sIdx + 1}</span>
+      <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeSection(${sIdx})">
+        <i class="bi bi-trash"></i>
+      </button>
+    </div>
+    <div class="card-body">
+      <div class="row g-2 mb-3">
+        <div class="col-md-6">
+          <label class="form-label small">Категория техники</label>
+          <select class="form-select form-select-sm" id="s${sIdx}_cat" onchange="onCatChange(${sIdx})">
+            <option value="">— выберите —</option>
+            ${catOptions}
+          </select>
+        </div>
+      </div>
+
+      <!-- area_based params -->
+      <div id="s${sIdx}_scaffold" style="display:none">
+        <label class="form-label small">Стороны объекта (длина × высота, м)</label>
+        ${[1,2,3,4].map(i => `
+        <div class="row g-2 mb-1 align-items-center">
+          <div class="col-1 text-muted small text-end">${i}</div>
+          <div class="col-4"><div class="input-group input-group-sm">
+            <input type="number" class="form-control" id="s${sIdx}_side${i}_l" placeholder="Длина" step="0.1" min="0"
+              oninput="updateArea(${sIdx}, ${i})">
+            <span class="input-group-text">м</span>
+          </div></div>
+          <div class="col-4"><div class="input-group input-group-sm">
+            <input type="number" class="form-control" id="s${sIdx}_side${i}_h" placeholder="Высота" step="0.1" min="0"
+              oninput="updateArea(${sIdx}, ${i})">
+            <span class="input-group-text">м</span>
+          </div></div>
+          <div class="col-3 small text-muted" id="s${sIdx}_area${i}"></div>
+        </div>`).join('')}
+        <div class="row g-2 mt-2">
+          <div class="col-6 col-md-3"><label class="form-label small">Настилов</label>
+            <input type="number" class="form-control form-control-sm" id="s${sIdx}_planks" value="4" min="0"></div>
+          <div class="col-6 col-md-3"><label class="form-label small">Сезонный коэф.</label>
+            <input type="number" class="form-control form-control-sm" id="s${sIdx}_season" value="1.2" step="0.05"></div>
+          <div class="col-6 col-md-3"><label class="form-label small">Диагональные связи</label>
+            <select class="form-select form-select-sm" id="s${sIdx}_diag">
+              <option value="every">В каждую</option><option value="staggered">Через секцию</option>
+            </select></div>
+          <div class="col-6 col-md-3"><label class="form-label small">Коэф. цен</label>
+            <input type="number" class="form-control form-control-sm" id="s${sIdx}_pcoef" value="1.15" step="0.01"></div>
+          <div class="col-6 col-md-3"><label class="form-label small">Кронштейны</label>
+            <input type="number" class="form-control form-control-sm" id="s${sIdx}_bracket" value="0" min="0"></div>
+          <div class="col-6 col-md-3"><label class="form-label small">Башмаки</label>
+            <input type="number" class="form-control form-control-sm" id="s${sIdx}_baseplate" value="0" min="0"></div>
+        </div>
+      </div>
+
+      <!-- tower params -->
+      <div id="s${sIdx}_tower" style="display:none">
+        <div class="row g-2">
+          <div class="col-md-4"><label class="form-label small">Высота (м)</label>
+            <select class="form-select form-select-sm" id="s${sIdx}_height">
+              ${towerHeights.map(h => `<option value="${h}" ${h==3.89?'selected':''}>${h} м</option>`).join('')}
+            </select></div>
+          <div class="col-md-4"><label class="form-label small">Модель</label>
+            <select class="form-select form-select-sm" id="s${sIdx}_tmodel">
+              <option value="ПСРВ-21">ПСРВ-21</option><option value="ПСРВ-22">ПСРВ-22</option>
+            </select></div>
+          <div class="col-md-4"><label class="form-label small">Количество вышек</label>
+            <input type="number" class="form-control form-control-sm" id="s${sIdx}_qty_t" value="1" min="1"></div>
+        </div>
+      </div>
+
+      <!-- daily_rate params -->
+      <div id="s${sIdx}_daily" style="display:none">
+        <table class="table table-sm mb-2" id="s${sIdx}_drTable">
+          <thead><tr><th>Оборудование</th><th style="width:80px">Кол-во</th>
+            <th style="width:120px">Суточная ставка</th><th style="width:120px">Рыночная цена</th>
+            <th style="width:36px"></th></tr></thead>
+          <tbody id="s${sIdx}_drBody"></tbody>
+        </table>
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addDrRow(${sIdx})">
+          <i class="bi bi-plus me-1"></i>Добавить позицию
+        </button>
+      </div>
+
+      <div class="mt-3 d-flex gap-2">
+        <button type="button" class="btn btn-outline-info btn-sm flex-grow-1" onclick="calcSection(${sIdx})">
+          <i class="bi bi-calculator me-1"></i>Рассчитать раздел
+        </button>
+      </div>
+
+      <!-- Section result -->
+      <div id="s${sIdx}_result" style="display:none" class="mt-3">
+        <div class="section-summary mb-2">
+          <div class="d-flex justify-content-between small"><span>Суточная:</span><span id="s${sIdx}_r_daily"></span></div>
+          <div class="d-flex justify-content-between small"><span>Аренда:</span><span id="s${sIdx}_r_rental"></span></div>
+          <div class="d-flex justify-content-between small"><span>Залог:</span><span id="s${sIdx}_r_deposit"></span></div>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm mb-0" id="s${sIdx}_equipTable">
+            <thead><tr><th>Наименование</th><th class="text-end">Расчёт</th><th style="width:80px">Факт</th><th class="text-end">Сумма</th></tr></thead>
+            <tbody id="s${sIdx}_equipTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>`;
+
+  document.getElementById('sectionsContainer').insertAdjacentHTML('beforeend', html);
+  updateSubmitBtn();
+}
+
+function removeSection(sIdx) {
+  document.getElementById(`section_${sIdx}`).remove();
+  delete sections[sIdx];
+  document.getElementById('sectionCount').value = Object.keys(sections).length;
+  updateTotalPanel();
+  updateSubmitBtn();
+}
+
+function onCatChange(sIdx) {
+  const catId = document.getElementById(`s${sIdx}_cat`).value;
+  const cat = getCatById(catId);
+  sections[sIdx].catId = catId;
+  sections[sIdx].algoCode = cat ? cat.algorithm_code : null;
+  sections[sIdx].calcResult = null;
+
+  document.getElementById(`s${sIdx}_scaffold`).style.display = 'none';
+  document.getElementById(`s${sIdx}_tower`).style.display = 'none';
+  document.getElementById(`s${sIdx}_daily`).style.display = 'none';
+  document.getElementById(`s${sIdx}_result`).style.display = 'none';
+
+  if (!cat) return;
+  if (cat.algorithm_code === 'area_based') document.getElementById(`s${sIdx}_scaffold`).style.display = '';
+  if (cat.algorithm_code === 'tower') document.getElementById(`s${sIdx}_tower`).style.display = '';
+  if (cat.algorithm_code === 'daily_rate') document.getElementById(`s${sIdx}_daily`).style.display = '';
+  updateSubmitBtn();
+}
+
+function updateArea(sIdx, i) {
+  const l = parseFloat(document.getElementById(`s${sIdx}_side${i}_l`).value) || 0;
+  const h = parseFloat(document.getElementById(`s${sIdx}_side${i}_h`).value) || 0;
+  document.getElementById(`s${sIdx}_area${i}`).textContent = l * h > 0 ? fmtN(l * h) + ' м²' : '';
+}
+
+// --- daily_rate rows ---
+function addDrRow(sIdx) {
+  const cat = getCatById(sections[sIdx].catId);
+  const eqTypes = cat ? cat.equipment_types : [];
+  const rowIdx = sections[sIdx].drRowCount++;
+  const opts = eqTypes.map(et =>
+    `<option value="${et.code}" data-rate="${et.daily_rate}" data-price="${et.unit_price}">${et.name}</option>`
+  ).join('');
+
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><select class="form-select form-select-sm" onchange="fillDrRates(this)">
+      <option value="">— выбрать —</option>${opts}
+    </select></td>
+    <td><input type="number" class="form-control form-control-sm dr-qty" value="1" min="1"></td>
+    <td><input type="number" class="form-control form-control-sm dr-rate" value="0" min="0" step="10"></td>
+    <td><input type="number" class="form-control form-control-sm dr-price" value="0" min="0" step="100"></td>
+    <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('tr').remove()">×</button></td>`;
+  document.getElementById(`s${sIdx}_drBody`).appendChild(tr);
+}
+
+function fillDrRates(sel) {
+  const opt = sel.options[sel.selectedIndex];
+  const tr = sel.closest('tr');
+  tr.querySelector('.dr-rate').value = opt.dataset.rate || 0;
+  tr.querySelector('.dr-price').value = parseFloat(opt.dataset.price || 0).toFixed(0);
+}
+
+// --- Calculate one section ---
+async function calcSection(sIdx) {
+  const sec = sections[sIdx];
+  if (!sec.catId) { alert('Выберите категорию для раздела.'); return; }
+  const cat = getCatById(sec.catId);
+  const algo = cat.algorithm_code;
+
+  const dealContext = {
+    city: document.getElementById('citySelect').value,
+    days: parseInt(document.getElementById('rentalDays').value) || 30,
+    deposit_pct: parseFloat(document.getElementById('depositPct').value) || 10,
+    delivery_cost: 0,
+    vat_mode: 'no_vat',
+  };
+
+  let pricingParams = {};
+  let equipmentItems = [];
+
+  if (algo === 'area_based') {
+    const sides = [];
+    for (let i = 1; i <= 4; i++) {
+      sides.push([
+        parseFloat(document.getElementById(`s${sIdx}_side${i}_l`).value) || 0,
+        parseFloat(document.getElementById(`s${sIdx}_side${i}_h`).value) || 0,
+      ]);
+    }
+    pricingParams = {
+      sides,
+      season_coeff: parseFloat(document.getElementById(`s${sIdx}_season`).value) || 1.2,
+      diagonal_mode: document.getElementById(`s${sIdx}_diag`).value,
+      planks_qty: parseInt(document.getElementById(`s${sIdx}_planks`).value) || 4,
+      price_coeff: parseFloat(document.getElementById(`s${sIdx}_pcoef`).value) || 1.15,
+      bracket_qty: parseInt(document.getElementById(`s${sIdx}_bracket`).value) || 0,
+      base_plate_qty: parseInt(document.getElementById(`s${sIdx}_baseplate`).value) || 0,
+    };
+  } else if (algo === 'tower') {
+    pricingParams = {
+      height: parseFloat(document.getElementById(`s${sIdx}_height`).value),
+      qty_towers: parseInt(document.getElementById(`s${sIdx}_qty_t`).value) || 1,
+      model: document.getElementById(`s${sIdx}_tmodel`).value,
+    };
+  } else if (algo === 'daily_rate') {
+    document.querySelectorAll(`#s${sIdx}_drBody tr`).forEach(tr => {
+      const code = tr.querySelector('select').value;
+      const qty = parseInt(tr.querySelector('.dr-qty').value) || 0;
+      const daily_rate = parseFloat(tr.querySelector('.dr-rate').value) || 0;
+      const unit_price = parseFloat(tr.querySelector('.dr-price').value) || 0;
+      if (code && qty > 0) {
+        const et = cat.equipment_types.find(e => e.code === code);
+        equipmentItems.push({ code, qty, daily_rate, unit_price, name: et ? et.name : code });
+      }
+    });
+    if (!equipmentItems.length) { alert('Добавьте хотя бы одну позицию.'); return; }
+  }
+
+  const resp = await fetch('{% url "calculate_ajax" %}', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRF() },
+    body: JSON.stringify({ category_id: cat.id, deal_context: dealContext, pricing_params: pricingParams, equipment_items: equipmentItems }),
+  });
+  const data = await resp.json();
+  if (!data.ok) { alert('Ошибка расчёта: ' + data.error); return; }
+  const r = data.result;
+  sections[sIdx].calcResult = r;
+  sections[sIdx].pricingParams = pricingParams;
+  sections[sIdx].equipmentItems = equipmentItems;
+
+  // Show section summary
+  document.getElementById(`s${sIdx}_r_daily`).textContent = fmt(r.daily_cost);
+  document.getElementById(`s${sIdx}_r_rental`).textContent = fmt(r.total_rental);
+  document.getElementById(`s${sIdx}_r_deposit`).textContent = fmt(r.deposit_amount || r.deposit_total || 0);
+
+  // Equipment table with editable qty (for area_based / tower)
+  const tbody = document.getElementById(`s${sIdx}_equipTbody`);
+  tbody.innerHTML = '';
+  const equipItems = r.equipment_items || [];
+  const showEdit = algo !== 'daily_rate';
+  document.getElementById(`s${sIdx}_equipTable`).querySelector('thead tr').cells[2].style.display =
+    showEdit ? '' : 'none';
+
+  equipItems.forEach(item => {
+    if (item.qty <= 0) return;
+    const avail = stockSnapshot[item.code] !== undefined ? stockSnapshot[item.code] : '?';
+    const cls = avail !== '?' && avail >= item.qty ? 'text-success' : 'text-danger';
+    tbody.innerHTML += `<tr>
+      <td>${item.name} <small class="${cls}">(склад: ${avail})</small></td>
+      <td class="text-end text-muted">${item.qty}</td>
+      <td style="${showEdit ? '' : 'display:none'}">
+        <input type="number" class="form-control form-control-sm" style="width:70px"
+          id="s${sIdx}_qty_${item.code}" value="${item.qty}" min="0">
+      </td>
+      <td class="text-end">${fmt(item.total)}</td>
+    </tr>`;
+  });
+
+  document.getElementById(`s${sIdx}_result`).style.display = '';
+  updateTotalPanel();
+  updateSubmitBtn();
+}
+
+// ---------- Grand total ----------
+function updateTotalPanel() {
+  let sumRental = 0, sumMarket = 0, sumDeposit = 0, sumDaily = 0;
+  let allItems = {};  // code → total qty
+
+  for (const sIdx of Object.keys(sections)) {
+    const r = sections[sIdx].calcResult;
+    if (!r) continue;
+    sumRental += r.total_rental || 0;
+    sumMarket += r.market_value || r.market_value_total || 0;
+    sumDeposit += r.deposit_amount || r.deposit_total || 0;
+    sumDaily += r.daily_cost || 0;
+    for (const item of (r.equipment_items || [])) {
+      allItems[item.code] = (allItems[item.code] || 0) + item.qty;
+    }
+  }
+
+  const delivery = (parseFloat(document.getElementById('deliveryCost').value) || 0) * 2;
+  let grand = sumRental + sumDeposit + delivery;
+  const vat = document.getElementById('vatMode').value;
+  if (vat === 'with_vat') grand = Math.round(grand * 1.20);
+
+  const days = parseInt(document.getElementById('rentalDays').value) || 30;
+
+  document.getElementById('totalBody').innerHTML = `
+    <div class="d-flex justify-content-between small mb-1"><span>Суточная (всего):</span><span>${fmt(sumDaily)}</span></div>
+    <div class="d-flex justify-content-between small mb-1"><span>Итого аренда (${days} дн.):</span><span>${fmt(sumRental)}</span></div>
+    <div class="d-flex justify-content-between small mb-1"><span>Залог:</span><span>${fmt(sumDeposit)}</span></div>
+    <div class="d-flex justify-content-between small mb-1"><span>Доставка (×2):</span><span>${fmt(delivery)}</span></div>
+    ${vat === 'with_vat' ? `<div class="d-flex justify-content-between small mb-1 text-muted"><span>НДС 20%:</span><span>${fmt(grand - sumRental - sumDeposit - delivery)}</span></div>` : ''}
+    <div class="d-flex justify-content-between fw-bold border-top pt-2 mt-1">
+      <span>ИТОГО:</span><span class="text-primary fs-5">${fmt(grand)}</span>
+    </div>`;
+
+  // Stock check
+  const stockItems = Object.entries(allItems).filter(([,q]) => q > 0).map(([c, q]) => ({ code: c, qty: q }));
+  if (stockItems.length) {
+    fetch('{% url "stock_check_ajax" %}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRF() },
+      body: JSON.stringify({ items: stockItems }),
+    }).then(r => r.json()).then(data => {
+      if (!data.ok) return;
+      const tbody = document.getElementById('stockTbody');
+      tbody.innerHTML = '';
+      data.items.forEach(si => {
+        const cls = si.ok ? 'stock-ok' : 'stock-warn';
+        tbody.innerHTML += `<tr><td>${si.name}</td><td class="text-end">${si.required}</td>
+          <td class="text-end">${si.available}</td>
+          <td class="text-end ${cls}">${si.ok ? '✓ ОК' : '✗ −' + si.shortage}</td></tr>`;
+      });
+    });
+  }
+
+  const hasResult = Object.values(sections).some(s => s.calcResult);
+  document.getElementById('totalPanel').style.display = hasResult ? '' : 'none';
+  document.getElementById('totalPlaceholder').style.display = hasResult ? 'none' : '';
+}
+
+document.getElementById('deliveryCost').addEventListener('input', updateTotalPanel);
+document.getElementById('vatMode').addEventListener('change', updateTotalPanel);
+document.getElementById('rentalDays').addEventListener('input', updateTotalPanel);
+
+function updateSubmitBtn() {
+  const anyCalc = Object.values(sections).some(s => s.calcResult);
+  document.getElementById('btnSubmit').disabled = !anyCalc;
+}
+
+document.getElementById('btnAddSection').addEventListener('click', addSection);
+
+// ---------- On submit: inject hidden inputs ----------
+document.getElementById('dealForm').addEventListener('submit', function () {
+  let validIdx = 0;
+  const container = document.getElementById('sectionsContainer');
+  // Remove any previously injected hidden inputs
+  container.querySelectorAll('.hidden-section-input').forEach(e => e.remove());
+
+  for (const sIdx of Object.keys(sections).sort((a, b) => +a - +b)) {
+    const sec = sections[sIdx];
+    if (!sec.calcResult || !sec.catId) continue;
+    const algo = sec.algoCode;
+    const p = `s${validIdx}`;  // server-side prefix
+
+    function inj(name, val) {
+      const el = document.createElement('input');
+      el.type = 'hidden';
+      el.name = `${p}_${name}`;
+      el.value = val;
+      el.className = 'hidden-section-input';
+      container.appendChild(el);
+    }
+
+    inj('category_id', sec.catId);
+
+    if (algo === 'area_based') {
+      for (let i = 1; i <= 4; i++) {
+        inj(`side${i}_length`, document.getElementById(`s${sIdx}_side${i}_l`).value || 0);
+        inj(`side${i}_height`, document.getElementById(`s${sIdx}_side${i}_h`).value || 0);
+      }
+      inj('season_coeff', document.getElementById(`s${sIdx}_season`).value);
+      inj('diagonal_mode', document.getElementById(`s${sIdx}_diag`).value);
+      inj('planks_qty', document.getElementById(`s${sIdx}_planks`).value);
+      inj('price_coeff', document.getElementById(`s${sIdx}_pcoef`).value);
+      inj('bracket_qty', document.getElementById(`s${sIdx}_bracket`).value);
+      inj('base_plate_qty', document.getElementById(`s${sIdx}_baseplate`).value);
+      // qty overrides
+      (sec.calcResult.equipment_items || []).forEach(item => {
+        const overrideEl = document.getElementById(`s${sIdx}_qty_${item.code}`);
+        if (overrideEl) inj(`qty_${item.code}`, overrideEl.value);
+      });
+    } else if (algo === 'tower') {
+      inj('height', document.getElementById(`s${sIdx}_height`).value);
+      inj('tower_model', document.getElementById(`s${sIdx}_tmodel`).value);
+      inj('qty_towers', document.getElementById(`s${sIdx}_qty_t`).value);
+      (sec.calcResult.equipment_items || []).forEach(item => {
+        const overrideEl = document.getElementById(`s${sIdx}_qty_${item.code}`);
+        if (overrideEl) inj(`qty_${item.code}`, overrideEl.value);
+      });
+    } else if (algo === 'daily_rate') {
+      let drIdx = 0;
+      document.querySelectorAll(`#s${sIdx}_drBody tr`).forEach(tr => {
+        const code = tr.querySelector('select').value;
+        const qty = tr.querySelector('.dr-qty').value;
+        if (code && parseInt(qty) > 0) {
+          inj(`dr_code_${drIdx}`, code);
+          inj(`dr_qty_${drIdx}`, qty);
+          drIdx++;
+        }
+      });
+    }
+    validIdx++;
+  }
+  document.getElementById('sectionCount').value = validIdx;
+});
+</script>
+{% endblock %}

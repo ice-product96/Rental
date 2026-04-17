@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+{% block nav_documents_our %}active{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-10">
+    <div class="card">
+      <div class="card-header">{{ page_title }}</div>
+      <div class="card-body">
+        <form method="post" id="ourEntityForm">
+          {% csrf_token %}
+          {% crispy form %}
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+function toggleOrgFields() {
+  const type = document.querySelector('[name=entity_type]').value;
+  document.getElementById('individual-org-fields').style.display = type === 'individual' ? '' : 'none';
+  document.getElementById('company-org-fields').style.display = type === 'company' ? '' : 'none';
+}
+document.querySelector('[name=entity_type]').addEventListener('change', toggleOrgFields);
+toggleOrgFields();
+</script>
+{% endblock %}

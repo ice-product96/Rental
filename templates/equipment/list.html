@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block nav_warehouse %}active{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div></div>
+  <a href="{% url 'equipment_type_create' %}" class="btn btn-sm btn-primary">
+    <i class="bi bi-plus-lg"></i> Новый тип оборудования
+  </a>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Код</th>
+          <th>Наименование</th>
+          <th>Категория</th>
+          <th class="text-end">База (Абрис), ₽</th>
+          <th class="text-end">Коэф.</th>
+          <th class="text-end">Наша цена, ₽</th>
+          <th class="text-end">Вес ед., кг</th>
+          <th class="text-center">Активно</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in types %}
+        <tr>
+          <td class="text-muted small font-monospace">{{ t.code }}</td>
+          <td>{{ t.name }}</td>
+          <td class="small text-muted">{{ t.category.name|default:"—" }}</td>
+          <td class="text-end">{{ t.base_price|floatformat:0 }}</td>
+          <td class="text-end text-muted">×{{ t.price_coefficient }}</td>
+          <td class="text-end fw-semibold">{{ t.unit_price }}</td>
+          <td class="text-end text-muted">{{ t.weight_per_unit }}</td>
+          <td class="text-center">
+            {% if t.is_active %}
+              <i class="bi bi-check-circle-fill text-success"></i>
+            {% else %}
+              <i class="bi bi-dash-circle text-secondary"></i>
+            {% endif %}
+          </td>
+          <td>
+            <a href="{% url 'equipment_type_edit' t.pk %}" class="btn btn-sm btn-outline-secondary">
+              <i class="bi bi-pencil"></i>
+            </a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="9" class="text-center text-muted py-4">Типов оборудования нет</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

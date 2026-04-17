@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Счёт №{{ invoice.number }}</title>
+<style>
+  body { font-family: Arial, sans-serif; font-size: 12px; margin: 24px; color: #111; }
+  .print-btn { margin-bottom: 12px; }
+  table { width: 100%; border-collapse: collapse; }
+  .bank td, .bank th { border: 1px solid #5a5a5a; padding: 4px 6px; vertical-align: top; }
+  .bank .small { font-size: 10px; }
+  .title { font-size: 36px; margin: 22px 0 10px; font-weight: 700; }
+  .doc-title { font-size: 24px; font-weight: 700; margin: 18px 0; }
+  .party-table td { border-bottom: 1px solid #5a5a5a; padding: 8px 4px; vertical-align: top; }
+  .party-label { width: 145px; color: #222; }
+  .items { margin-top: 12px; }
+  .items th, .items td { border: 1px solid #5a5a5a; padding: 6px 8px; }
+  .items th { text-align: center; font-weight: 700; }
+  .num, .sum { text-align: right; white-space: nowrap; }
+  .totals { width: 330px; margin-left: auto; margin-top: 10px; }
+  .totals td { padding: 2px 0; font-size: 20px; font-weight: 700; }
+  .totals .label { text-align: right; padding-right: 18px; }
+  .summary { margin-top: 16px; font-size: 28px; }
+  .summary strong { font-size: 34px; }
+  .note { margin-top: 18px; line-height: 1.45; }
+  .line { border-top: 3px solid #4d4d4d; margin: 20px 0; }
+  .sign-row { margin-top: 18px; display: flex; justify-content: space-between; gap: 30px; font-size: 20px; font-weight: 700; }
+  .sign-col { flex: 1; display: flex; align-items: center; gap: 12px; }
+  .sign-line { flex: 1; border-bottom: 2px solid #4d4d4d; height: 0; }
+  .print-only { display: none; }
+  @media print {
+    .print-btn { display: none; }
+    .print-only { display: inline; }
+  }
+</style>
+</head>
+<body>
+<button class="print-btn" onclick="window.print()">Печать</button>
+
+<table class="bank">
+  <tr>
+    <td colspan="2">{{ company.bank }}</td>
+    <td style="width:70px;"><strong>БИК</strong></td>
+    <td style="width:220px;" class="num">{{ company.bik }}</td>
+  </tr>
+  <tr>
+    <td colspan="2" class="small">Банк получателя</td>
+    <td><span class="small">Сч. №</span></td>
+    <td class="num">{{ company.corr_account }}</td>
+  </tr>
+  <tr>
+    <td style="width:70px;"><strong>ИНН</strong> {{ company.inn }}</td>
+    <td style="width:180px;"><strong>КПП</strong> {{ company.kpp }}</td>
+    <td rowspan="2"><strong>Сч. №</strong></td>
+    <td rowspan="2" class="num">{{ company.account }}</td>
+  </tr>
+  <tr>
+    <td colspan="2">{{ company.full_name }}</td>
+  </tr>
+  <tr>
+    <td colspan="2" class="small">Получатель</td>
+    <td class="small"></td>
+    <td class="small"></td>
+  </tr>
+</table>
+
+<div class="title">Счет</div>
+<div class="doc-title">Счет на оплату № {{ invoice.number }} от {{ invoice.date|date:"d F Y г." }}</div>
+
+<table class="party-table">
+  <tr>
+    <td class="party-label">Поставщик (Исполнитель):</td>
+    <td><strong>{{ company.full_name }}, ИНН {{ company.inn }}, КПП {{ company.kpp }}, {{ company.address }}</strong></td>
+  </tr>
+  <tr>
+    <td class="party-label">Покупатель (Заказчик):</td>
+    <td>
+      {% if invoice.deal.client.is_company %}
+        <strong>{{ invoice.deal.client.company_full_name|default:invoice.deal.client.name }}, ИНН {{ invoice.deal.client.inn }}, КПП {{ invoice.deal.client.kpp }}, {{ invoice.deal.client.legal_address|default:invoice.deal.client.address }}</strong>
+      {% else %}
+        <strong>{{ invoice.deal.client.name }}, {{ invoice.deal.client.address }}</strong>
+      {% endif %}
+    </td>
+  </tr>
+  <tr>
+    <td class="party-label">Основание:</td>
+    <td><strong>Сделка № {{ invoice.deal.number }}</strong></td>
+  </tr>
+</table>
+
+<table class="items">
+  <thead>
+    <tr><th style="width:42px;">№</th><th>Товары (работы, услуги)</th><th style="width:90px;">Кол-во</th><th style="width:70px;">Ед.</th><th style="width:140px;">Цена</th><th style="width:160px;">Сумма</th></tr>
+  </thead>
+  <tbody>
+    {% for item in invoice.items.all %}
+      <tr>
+        <td class="num">{{ forloop.counter }}</td>
+        <td>{{ item.name }}</td>
+        <td class="num">{{ item.qty|floatformat:2 }}</td>
+        <td>{{ item.unit }}</td>
+        <td class="sum">{{ item.price|floatformat:2 }}</td>
+        <td class="sum">{{ item.total|floatformat:2 }}</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<table class="totals">
+  <tr><td class="label">Итого:</td><td class="sum">{{ invoice.subtotal|floatformat:2 }}</td></tr>
+  <tr><td class="label">В том числе НДС:</td><td class="sum">{{ invoice.vat_amount|floatformat:2 }}</td></tr>
+  <tr><td class="label">Всего к оплате:</td><td class="sum">{{ invoice.total|floatformat:2 }}</td></tr>
+</table>
+
+<div class="summary">Всего наименований {{ invoice.items.count }}, на сумму <strong>{{ invoice.total|floatformat:2 }} руб.</strong></div>
+<div class="summary"><strong>{{ amount_words }}</strong></div>
+
+<div class="note">
+  Внимание!<br>
+  Оплата данного счета означает согласие с условиями поставки товара.<br>
+  Уведомление об оплате обязательно, в противном случае не гарантируется наличие товара на складе.
+</div>
+
+{% if invoice.notes %}
+  <div class="note"><strong>Примечание:</strong> {{ invoice.notes }}</div>
+{% endif %}
+
+<div class="line"></div>
+<div class="sign-row">
+  <div>
+    <div class="sign-col">
+      <span>Руководитель</span>
+      <span class="sign-line"></span>
+      <span>{{ company.director_short }}</span>
+    </div>
+  </div>
+  <div>
+    <div class="sign-col">
+      <span>Бухгалтер</span>
+      <span class="sign-line"></span>
+      <span>{{ company.director_short }}</span>
+    </div>
+  </div>
+</div>
+</body>
+</html>

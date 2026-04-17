@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card border-danger">
+      <div class="card-header text-danger">Удаление клиента</div>
+      <div class="card-body">
+        <p>Вы уверены, что хотите удалить клиента <strong>{{ client.name }}</strong>?</p>
+        {% if client.deals_count %}
+          <div class="alert alert-warning">У этого клиента {{ client.deals_count }} сделок. Удаление невозможно.</div>
+          <a href="{% url 'client_detail' client.pk %}" class="btn btn-secondary">Назад</a>
+        {% else %}
+          <form method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger me-2">Удалить</button>
+            <a href="{% url 'client_detail' client.pk %}" class="btn btn-secondary">Отмена</a>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

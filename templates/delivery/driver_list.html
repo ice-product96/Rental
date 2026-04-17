@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block nav_delivery %}active{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div></div>
+  <a href="{% url 'driver_create' %}" class="btn btn-sm btn-primary">
+    <i class="bi bi-plus-lg"></i> Добавить водителя
+  </a>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover table-sm mb-0 align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>ФИО</th>
+          <th>Телефон</th>
+          <th>Номер ВУ</th>
+          <th>Рейсов</th>
+          <th>Статус</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for driver in drivers %}
+        <tr>
+          <td class="fw-semibold">{{ driver.full_name }}</td>
+          <td class="small">{{ driver.phone|default:"—" }}</td>
+          <td class="small">{{ driver.license_number|default:"—" }}</td>
+          <td class="small text-muted">{{ driver.deliveries.count }}</td>
+          <td>
+            {% if driver.is_active %}
+            <span class="badge bg-success">Активен</span>
+            {% else %}
+            <span class="badge bg-secondary">Неактивен</span>
+            {% endif %}
+          </td>
+          <td>
+            <a href="{% url 'driver_edit' driver.pk %}" class="btn btn-sm btn-outline-secondary">Изменить</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-center text-muted py-4">Водителей нет</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block nav_clients %}active{% endblock %}
+{% block content %}
+<div class="row g-3">
+  <div class="col-lg-4">
+    <div class="card mb-3">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span>
+          {% if client.is_company %}
+            <span class="badge bg-primary me-2">Юр. лицо</span>
+          {% else %}
+            <span class="badge bg-secondary me-2">Физ. лицо</span>
+          {% endif %}
+          {{ client.name }}
+        </span>
+        <a href="{% url 'client_edit' client.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+      </div>
+      <div class="card-body">
+        {% if client.phone %}<div class="mb-1"><i class="bi bi-telephone me-2 text-muted"></i>{{ client.phone }}</div>{% endif %}
+        {% if client.email %}<div class="mb-1"><i class="bi bi-envelope me-2 text-muted"></i>{{ client.email }}</div>{% endif %}
+        {% if client.city %}<div class="mb-1"><i class="bi bi-geo-alt me-2 text-muted"></i>{{ client.city }}</div>{% endif %}
+        {% if client.address %}<div class="mb-1"><i class="bi bi-house me-2 text-muted"></i>{{ client.address }}</div>{% endif %}
+
+        {% if client.is_company %}
+          <hr>
+          {% if client.inn %}<div class="small text-muted">ИНН: {{ client.inn }} / КПП: {{ client.kpp }}</div>{% endif %}
+          {% if client.ogrn %}<div class="small text-muted">ОГРН: {{ client.ogrn }}</div>{% endif %}
+          {% if client.director %}<div class="small text-muted">Рук.: {{ client.director }}</div>{% endif %}
+          {% if client.bank_name %}<div class="small text-muted mt-1">{{ client.bank_name }}</div>{% endif %}
+          {% if client.bank_account %}<div class="small text-muted">р/с {{ client.bank_account }}</div>{% endif %}
+        {% else %}
+          {% if client.passport_series %}
+            <hr>
+            <div class="small text-muted">Паспорт: {{ client.passport_series }} {{ client.passport_number }}</div>
+            {% if client.birth_date %}<div class="small text-muted">Дата рожд.: {{ client.birth_date|date:"d.m.Y" }}</div>{% endif %}
+          {% endif %}
+        {% endif %}
+
+        {% if client.notes %}<hr><div class="small">{{ client.notes }}</div>{% endif %}
+      </div>
+      <div class="card-footer d-grid gap-2">
+        <a href="{% url 'deal_create' %}?client={{ client.pk }}" class="btn btn-primary btn-sm">
+          <i class="bi bi-plus-lg me-1"></i>Новая сделка
+        </a>
+        <a href="{% url 'documents_contract_create' %}?client={{ client.pk }}" class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-file-earmark-richtext me-1"></i>Договор по клиенту
+        </a>
+        <a href="{% url 'documents_contract_list' %}?client={{ client.pk }}" class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-list-ul me-1"></i>Договоры клиента
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header">Сделки клиента ({{ deals.count }})</div>
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead><tr><th>№</th><th>Тип</th><th>Статус</th><th>Сумма</th><th>Создана</th><th>Возврат</th></tr></thead>
+          <tbody>
+            {% for deal in deals %}
+            <tr>
+              <td><a href="{% url 'deal_detail' deal.pk %}" class="fw-semibold">{{ deal.number }}</a></td>
+              <td>{{ deal.category_name }}</td>
+              <td><span class="badge bg-{{ deal.status_color }}">{{ deal.status_label }}</span></td>
+              <td>{{ deal.grand_total|floatformat:0 }} ₽</td>
+              <td class="text-muted small">{{ deal.created_at|date:"d.m.Y" }}</td>
+              <td class="text-muted small">{{ deal.end_date|date:"d.m.Y"|default:"—" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="text-center text-muted py-3">Сделок нет</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

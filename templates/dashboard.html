@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block nav_dashboard %}active{% endblock %}
+
+{% block content %}
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="stat-card border-start border-primary border-3">
+      <div class="stat-icon bg-primary bg-opacity-10 text-primary"><i class="bi bi-briefcase"></i></div>
+      <div class="stat-value text-primary">{{ stats.active_deals }}</div>
+      <div class="stat-label">Активных аренд</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card border-start border-warning border-3">
+      <div class="stat-icon bg-warning bg-opacity-10 text-warning"><i class="bi bi-stars"></i></div>
+      <div class="stat-value text-warning">{{ stats.new_deals }}</div>
+      <div class="stat-label">Новых заявок</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card border-start border-danger border-3">
+      <div class="stat-icon bg-danger bg-opacity-10 text-danger"><i class="bi bi-alarm"></i></div>
+      <div class="stat-value text-danger">{{ stats.overdue_deals }}</div>
+      <div class="stat-label">Просроченных</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card border-start border-success border-3">
+      <div class="stat-icon bg-success bg-opacity-10 text-success"><i class="bi bi-people"></i></div>
+      <div class="stat-value text-success">{{ stats.total_clients }}</div>
+      <div class="stat-label">Всего клиентов</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <span><i class="bi bi-clock-history me-2 text-primary"></i>Последние сделки</span>
+        <a href="{% url 'deal_list' %}" class="btn btn-sm btn-outline-primary">Все сделки</a>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle">
+          <thead>
+            <tr>
+              <th>№</th><th>Клиент</th><th>Тип</th><th>Статус</th><th>Сумма</th><th>Дата</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for deal in recent_deals %}
+            <tr>
+              <td><a href="{% url 'deal_detail' deal.pk %}" class="fw-semibold text-decoration-none">{{ deal.number }}</a></td>
+              <td><a href="{% url 'client_detail' deal.client.pk %}" class="text-decoration-none">{{ deal.client.name }}</a></td>
+              <td><span class="badge bg-secondary">{{ deal.category_names }}</span></td>
+              <td><span class="badge bg-{{ deal.status_color }} badge-status">{{ deal.status_label }}</span></td>
+              <td class="text-end fw-semibold">{{ deal.grand_total|floatformat:0 }} ₽</td>
+              <td class="text-muted small">{{ deal.created_at|date:"d.m.Y" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="text-center text-muted py-5">Сделок пока нет</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    {% if overdue_deals %}
+    <div class="card border-danger mb-3">
+      <div class="card-header text-danger bg-danger bg-opacity-10">
+        <i class="bi bi-exclamation-triangle me-2"></i>Просроченные аренды
+      </div>
+      <ul class="list-group list-group-flush">
+        {% for deal in overdue_deals %}
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+          <div>
+            <a href="{% url 'deal_detail' deal.pk %}" class="fw-semibold text-danger text-decoration-none">№{{ deal.number }}</a>
+            <div class="small text-muted">{{ deal.client.name }}</div>
+          </div>
+          <span class="badge bg-danger rounded-pill">{{ deal.days_remaining }} дн.</span>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="card-header"><i class="bi bi-lightning-charge me-2 text-warning"></i>Быстрые действия</div>
+      <div class="list-group list-group-flush">
+        <a href="{% url 'deal_create' %}" class="list-group-item list-group-item-action">
+          <i class="bi bi-plus-circle me-2 text-primary"></i>Новая сделка
+        </a>
+        <a href="{% url 'client_create' %}" class="list-group-item list-group-item-action">
+          <i class="bi bi-person-plus me-2 text-success"></i>Новый клиент
+        </a>
+        <a href="{% url 'calculator' %}" class="list-group-item list-group-item-action">
+          <i class="bi bi-calculator me-2 text-info"></i>Расчёт стоимости
+        </a>
+        <a href="{% url 'warehouse_list' %}" class="list-group-item list-group-item-action">
+          <i class="bi bi-boxes me-2 text-warning"></i>Остатки на складе
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

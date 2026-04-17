@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block nav_delivery %}active{% endblock %}
+{% block content %}
+
+<div class="d-flex align-items-center gap-3 mb-3">
+  <h5 class="mb-0">Рейс #{{ delivery.pk }}</h5>
+  <span class="badge bg-{{ delivery.status_color }} fs-6">{{ delivery.status_label }}</span>
+  {% if delivery.direction == 'delivery' %}
+  <span class="badge bg-info text-dark"><i class="bi bi-truck me-1"></i>Отгрузка</span>
+  {% else %}
+  <span class="badge bg-warning text-dark"><i class="bi bi-arrow-return-left me-1"></i>Возврат</span>
+  {% endif %}
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-8">
+
+    <div class="card mb-3">
+      <div class="card-header">Информация о рейсе</div>
+      <div class="card-body">
+        <div class="row g-2 small">
+          <div class="col-md-6">
+            <strong>Сделка:</strong>
+            <a href="{% url 'deal_detail' delivery.deal.pk %}">№{{ delivery.deal.number }}</a>
+          </div>
+          <div class="col-md-6">
+            <strong>Клиент:</strong> {{ delivery.deal.client.name }}
+          </div>
+          <div class="col-md-6">
+            <strong>Водитель:</strong>
+            {% if delivery.driver %}
+              {{ delivery.driver.full_name }}
+              {% if delivery.driver.phone %}<span class="text-muted ms-1">{{ delivery.driver.phone }}</span>{% endif %}
+            {% else %}
+              <span class="text-muted">— не назначен —</span>
+            {% endif %}
+          </div>
+          <div class="col-md-6">
+            <strong>Транспортное средство:</strong>
+            {% if delivery.vehicle %}
+              {{ delivery.vehicle.name }}
+              <span class="badge bg-secondary ms-1">{{ delivery.vehicle.reg_number }}</span>
+              {% if delivery.vehicle.capacity_tons %}<span class="text-muted ms-1">{{ delivery.vehicle.capacity_tons }} т</span>{% endif %}
+            {% else %}
+              <span class="text-muted">— не назначена —</span>
+            {% endif %}
+          </div>
+          <div class="col-md-4">
+            <strong>Плановая дата:</strong>
+            {{ delivery.planned_date|date:"d.m.Y" }}
+            {% if delivery.planned_time %}{{ delivery.planned_time|time:"H:i" }}{% endif %}
+          </div>
+          <div class="col-md-4">
+            <strong>Фактическая дата:</strong>
+            {{ delivery.actual_date|date:"d.m.Y"|default:"—" }}
+          </div>
+          {% if delivery.cost %}
+          <div class="col-md-4">
+            <strong>Стоимость:</strong> {{ delivery.cost|floatformat:0 }} ₽
+          </div>
+          {% endif %}
+          <div class="col-12">
+            <strong>Адрес:</strong> {{ delivery.effective_address }}
+          </div>
+          {% if delivery.notes %}
+          <div class="col-12">
+            <strong>Примечания:</strong> {{ delivery.notes }}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="col-lg-4">
+
+    <!-- Изменить статус -->
+    <div class="card mb-3">
+      <div class="card-header">Изменить статус</div>
+      <div class="card-body">
+        {% for val, label in status_choices %}
+        {% if val != delivery.status %}
+        <form method="post" action="{% url 'delivery_status_change' delivery.pk %}" class="mb-2">
+          {% csrf_token %}
+          <input type="hidden" name="status" value="{{ val }}">
+          <button type="submit" class="btn btn-sm btn-outline-primary w-100">→ {{ label }}</button>
+        </form>
+        {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Действия -->
+    <div class="card mb-3">
+      <div class="card-header">Действия</div>
+      <div class="list-group list-group-flush">
+        <a href="{% url 'delivery_edit' delivery.pk %}" class="list-group-item list-group-item-action">
+          <i class="bi bi-pencil me-2 text-primary"></i>Редактировать рейс
+        </a>
+        <a href="{% url 'deal_detail' delivery.deal.pk %}" class="list-group-item list-group-item-action">
+          <i class="bi bi-file-earmark-text me-2 text-secondary"></i>Перейти к сделке
+        </a>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}

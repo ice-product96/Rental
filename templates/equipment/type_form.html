@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+{% block nav_warehouse %}active{% endblock %}
+{% block content %}
+
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header"><strong>{{ page_title }}</strong></div>
+      <div class="card-body">
+
+        {% if eq_type %}
+        <div class="alert alert-info small mb-3 py-2">
+          <i class="bi bi-info-circle me-1"></i>
+          <strong>Наша цена</strong> рассчитывается автоматически:
+          <code>{{ eq_type.base_price|floatformat:0 }} × {{ eq_type.price_coefficient }} = {{ eq_type.unit_price }} ₽</code>
+        </div>
+        {% endif %}
+
+        <form method="post">
+          {% csrf_token %}
+          {{ form|crispy }}
+          <div class="d-flex gap-2 mt-3">
+            <button type="submit" class="btn btn-primary">Сохранить</button>
+            <a href="{% url 'equipment_list' %}" class="btn btn-outline-secondary">Отмена</a>
+          </div>
+        </form>
+
+        {% if not eq_type %}
+        <div class="alert alert-secondary small mt-3 py-2">
+          <i class="bi bi-box-seam me-1"></i>
+          После создания автоматически появится запись на складе (количество = 0).
+          Добавьте реальный остаток через <strong>Склад → Корректировка</strong>.
+        </div>
+        {% endif %}
+
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

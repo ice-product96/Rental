@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>{{ doc.get_doc_type_display }} №{{ doc.number }}</title>
+<style>
+  body { font-family: Arial, sans-serif; font-size: 12px; margin: 20px; }
+  h2 { text-align: center; font-size: 15px; margin-bottom: 16px; }
+  .parties { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 16px; }
+  .party { font-size: 11px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+  th, td { border: 1px solid #ccc; padding: 5px 8px; }
+  th { background: #f0f0f0; }
+  .text-right { text-align: right; }
+  .total-row { font-weight: bold; }
+  .sum-words { font-style: italic; margin: 8px 0; }
+  .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 32px; }
+  .sig-line { border-top: 1px solid #333; margin-top: 30px; padding-top: 4px; font-size: 11px; }
+  @media print { button { display:none; } }
+</style>
+</head>
+<body>
+<button onclick="window.print()">Печать</button>
+<h2>{{ doc.get_doc_type_display|upper }} №{{ doc.number }}<br>от {{ doc.date|date:"«d» F Y г." }}</h2>
+
+<div class="parties">
+  <div class="party"><strong>Арендодатель:</strong><br>{{ company.name }}, ИНН {{ company.inn }}<br>{{ company.address }}</div>
+  <div class="party"><strong>Арендатор:</strong><br>{{ doc.deal.client.name }}<br>{{ doc.deal.client.address }}</div>
+</div>
+<p>Сделка №{{ doc.deal.number }}, адрес: {{ doc.deal.delivery_address|default:doc.deal.client.city }}</p>
+
+<table>
+  <thead>
+    <tr><th>№</th><th>Наименование</th><th>Ед.</th><th>Кол-во</th><th>Цена ед.</th><th>Сумма</th></tr>
+  </thead>
+  <tbody>
+    {% for item in doc.items.all %}
+    <tr>
+      <td>{{ forloop.counter }}</td>
+      <td>{{ item.equipment_type.name }}</td>
+      <td>{{ item.equipment_type.unit }}</td>
+      <td class="text-right">{{ item.quantity }}</td>
+      <td class="text-right">{{ item.unit_price|floatformat:2 }}</td>
+      <td class="text-right">{{ item.quantity|floatformat:0|add:"0" }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+  <tfoot>
+    <tr class="total-row">
+      <td colspan="5" class="text-right">ИТОГО:</td>
+      <td class="text-right">{{ total_value|floatformat:2 }} руб.</td>
+    </tr>
+  </tfoot>
+</table>
+<div class="sum-words">{{ amount_words }}</div>
+
+<div class="signatures">
+  <div><strong>Сдал:</strong><div class="sig-line">{{ company.director_short }} _______________</div></div>
+  <div><strong>Принял:</strong><div class="sig-line">_______________________</div></div>
+</div>
+</body>
+</html>

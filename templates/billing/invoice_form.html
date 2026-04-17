@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block nav_billing %}active{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+<div class="col-lg-9">
+  <div class="card">
+    <div class="card-header">Новый счёт — сделка №{{ deal.number }} ({{ deal.client.name }})</div>
+    <div class="card-body">
+      <form method="post">
+        {% csrf_token %}
+        <div class="row g-2 mb-3">
+          <div class="col-md-4">
+            <label class="form-label small">Тип счёта</label>
+            <select class="form-select form-select-sm" name="invoice_type">
+              <option value="rental">Аренда</option>
+              <option value="deposit">Залог</option>
+              <option value="penalty">Штраф</option>
+              <option value="repair">Ремонт</option>
+              <option value="non_return">Невозврат</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small">Дата</label>
+            <input type="date" class="form-control form-control-sm" name="date" value="{{ today|date:'Y-m-d' }}" required>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small">Срок оплаты</label>
+            <input type="date" class="form-control form-control-sm" name="due_date">
+          </div>
+        </div>
+
+        <div class="alert alert-info py-2 small">
+          Позиции и стоимость в счёте берутся автоматически из данных сделки.
+        </div>
+
+        <table class="table table-sm" id="itemsTable">
+          <thead><tr><th>Наименование</th><th style="width:100px" class="text-end">Кол-во</th><th style="width:90px">Ед.</th><th style="width:140px" class="text-end">Цена</th><th style="width:140px" class="text-end">Сумма</th></tr></thead>
+          <tbody>
+            {% for item in prefill_items %}
+            <tr>
+              <td>{{ item.name }}</td>
+              <td class="text-end">{{ item.qty|floatformat:2 }}</td>
+              <td>{{ item.unit }}</td>
+              <td class="text-end">{{ item.price|floatformat:2 }}</td>
+              <td class="text-end">{{ item.total|floatformat:2 }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="5" class="text-center text-muted py-3">В сделке нет позиций для выставления счета</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        <div class="mb-3">
+          <label class="form-label small">Примечания</label>
+          <textarea class="form-control form-control-sm" name="notes" rows="2"></textarea>
+        </div>
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary" {% if not prefill_items %}disabled{% endif %}>Создать счёт</button>
+          <a href="{% url 'deal_detail' deal.pk %}" class="btn btn-secondary">Отмена</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+</div>
+{% endblock %}

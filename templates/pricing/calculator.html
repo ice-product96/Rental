@@ -1,0 +1,473 @@
+{% extends "base.html" %}
+{% block nav_calc %}active{% endblock %}
+
+{% block extra_css %}
+<style>
+.calc-section { background:#fff; border-radius:.5rem; border:1px solid #e9ecef; padding:1.5rem; margin-bottom:1rem; }
+.result-box { background:#f8f9fa; border-radius:.5rem; border:1px solid #dee2e6; padding:1.25rem; }
+.result-row { display:flex; justify-content:space-between; padding:.3rem 0; border-bottom:1px solid #f0f0f0; font-size:.9rem; }
+.result-row:last-child { border:none; }
+.result-total { font-size:1.25rem; font-weight:700; color:#0d6efd; }
+.nav-tabs .nav-link { color:#6c757d; }
+.nav-tabs .nav-link.active { color:#0d6efd; font-weight:600; }
+</style>
+{% endblock %}
+
+{% block content %}
+<ul class="nav nav-tabs mb-4" id="calcTabs">
+  <li class="nav-item">
+    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-scaffold">
+      <i class="bi bi-grid-3x3-gap me-1"></i>Строительные леса
+    </button>
+  </li>
+  <li class="nav-item">
+    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-tower">
+      <i class="bi bi-bar-chart-steps me-1"></i>Вышки-туры
+    </button>
+  </li>
+  <li class="nav-item">
+    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-delivery">
+      <i class="bi bi-truck me-1"></i>Расценки доставки
+    </button>
+  </li>
+</ul>
+
+<div class="tab-content">
+
+<!-- === SCAFFOLDING TAB === -->
+<div class="tab-pane fade show active" id="tab-scaffold">
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="calc-section">
+      <h6 class="mb-3 fw-semibold"><i class="bi bi-rulers me-2 text-primary"></i>Параметры объекта</h6>
+
+      <div class="mb-3">
+        <label class="form-label fw-semibold small">Стороны объекта (длина × высота, м)</label>
+        {% for i in "1234" %}
+        <div class="row g-2 mb-2">
+          <div class="col-5">
+            <div class="input-group input-group-sm">
+              <span class="input-group-text">{{ i }}</span>
+              <input type="number" class="form-control" id="s_side{{ i }}_length" placeholder="Длина" step="0.1" min="0">
+              <span class="input-group-text">м</span>
+            </div>
+          </div>
+          <div class="col-5">
+            <div class="input-group input-group-sm">
+              <input type="number" class="form-control" id="s_side{{ i }}_height" placeholder="Высота" step="0.1" min="0">
+              <span class="input-group-text">м</span>
+            </div>
+          </div>
+          <div class="col-2 d-flex align-items-center">
+            <span class="text-muted small" id="s_area{{ i }}"></span>
+          </div>
+        </div>
+        {% endfor %}
+        <div class="text-end text-primary fw-semibold small mt-1">
+          Итого площадь: <span id="s_total_area">—</span> м²
+        </div>
+      </div>
+
+      <div class="row g-2 mb-3">
+        <div class="col-md-4">
+          <label class="form-label small">Срок аренды (дней)</label>
+          <input type="number" class="form-control form-control-sm" id="s_days" value="30" min="1">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label small">Город</label>
+          <select class="form-select form-select-sm" id="s_city">
+            {% for city in cities %}
+            <option value="{{ city }}" {% if city == 'Екатеринбург' %}selected{% endif %}>{{ city }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label small">НДС</label>
+          <select class="form-select form-select-sm" id="s_vat_mode">
+            <option value="no_vat">Без НДС</option>
+            <option value="with_vat">С НДС (20%)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row g-2 mb-3">
+        <div class="col-md-4">
+          <label class="form-label small">Настилов (шт)</label>
+          <input type="number" class="form-control form-control-sm" id="s_planks_qty" value="4" min="0">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label small">Сезонный коэф.</label>
+          <input type="number" class="form-control form-control-sm" id="s_season_coeff" value="1.2" step="0.05" min="1">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label small">Залог %</label>
+          <input type="number" class="form-control form-control-sm" id="s_deposit_pct" value="10" min="0" max="100">
+        </div>
+      </div>
+
+      <div class="row g-2 mb-3">
+        <div class="col-md-4">
+          <label class="form-label small">Доставка (руб.)</label>
+          <input type="number" class="form-control form-control-sm" id="s_delivery_cost" value="0" min="0">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label small">Диагональные связи</label>
+          <select class="form-select form-select-sm" id="s_diagonal_mode">
+            <option value="every">В каждую секцию</option>
+            <option value="staggered">Через секцию</option>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label small">Коэф. цен (AI30)</label>
+          <input type="number" class="form-control form-control-sm" id="s_price_coeff" value="1.15" step="0.01" min="1">
+        </div>
+      </div>
+
+      <div class="row g-2 mb-3">
+        <div class="col-md-4">
+          <label class="form-label small">Кронштейны (шт)</label>
+          <input type="number" class="form-control form-control-sm" id="s_bracket_qty" value="0" min="0">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label small">Башмаки (шт)</label>
+          <input type="number" class="form-control form-control-sm" id="s_base_plate_qty" value="0" min="0">
+        </div>
+      </div>
+
+      <button class="btn btn-primary w-100" id="calcScaffold">
+        <i class="bi bi-calculator me-2"></i>Рассчитать
+      </button>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div id="s_result" style="display:none">
+      <div class="calc-section">
+        <h6 class="fw-semibold mb-3"><i class="bi bi-list-check me-2 text-success"></i>Состав оборудования</h6>
+        <div class="table-responsive">
+          <table class="table table-sm mb-0" id="s_equip_table">
+            <thead><tr><th>Наименование</th><th class="text-end">Кол-во</th><th class="text-end">Цена</th><th class="text-end">Сумма</th></tr></thead>
+            <tbody></tbody>
+            <tfoot>
+              <tr class="fw-bold"><td>Итого (залоговая стоимость)</td><td></td><td></td><td class="text-end" id="s_market_value"></td></tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+      <div class="calc-section">
+        <h6 class="fw-semibold mb-3"><i class="bi bi-currency-dollar me-2 text-warning"></i>Стоимость аренды</h6>
+        <div class="result-box">
+          <div class="result-row"><span class="text-muted">Тариф (руб./м²/день)</span><span id="s_rate"></span></div>
+          <div class="result-row"><span class="text-muted">Площадь</span><span id="s_area_out"></span></div>
+          <div class="result-row"><span class="text-muted">Город (коэф.)</span><span id="s_city_coeff"></span></div>
+          <div class="result-row"><span class="text-muted">Сезонный коэф.</span><span id="s_season_out"></span></div>
+          <div class="result-row"><span class="text-muted">Суточная стоимость</span><span id="s_daily"></span></div>
+          <div class="result-row"><span class="text-muted">Срок аренды</span><span id="s_days_out"></span></div>
+          <div class="result-row"><span class="text-muted">Итого аренда</span><span class="fw-semibold" id="s_rental"></span></div>
+          <div class="result-row"><span class="text-muted">Залог (<span id="s_dep_pct"></span>%)</span><span id="s_deposit"></span></div>
+          <div class="result-row"><span class="text-muted">Доставка (туда + обратно)</span><span id="s_delivery"></span></div>
+          {% verbatim %}<div class="result-row fw-bold pt-2">
+            <span>ИТОГО К ОПЛАТЕ</span>
+            <span class="result-total" id="s_grand_total"></span>
+          </div>{% endverbatim %}
+          <div class="result-row text-muted small" id="s_vat_row" style="display:none">
+            <span>в т.ч. НДС 20%</span><span id="s_vat"></span>
+          </div>
+        </div>
+        <div class="mt-3 row g-2 text-muted small">
+          <div class="col-6">Рек. суточная цена: <strong id="s_rec_price"></strong></div>
+          <div class="col-6">Износ %: <strong id="s_recovery"></strong></div>
+          <div class="col-6">Масса: <strong id="s_weight"></strong> кг</div>
+          <div class="col-6">Машин: <strong id="s_trucks"></strong></div>
+        </div>
+      </div>
+
+      <div class="mt-2">
+        <a href="{% url 'deal_create' %}" class="btn btn-success w-100">
+          <i class="bi bi-file-earmark-plus me-2"></i>Оформить сделку
+        </a>
+      </div>
+    </div>
+    <div id="s_placeholder" class="text-center text-muted py-5">
+      <i class="bi bi-calculator display-4 d-block mb-3"></i>
+      Заполните параметры и нажмите «Рассчитать»
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- === TOWER TAB === -->
+<div class="tab-pane fade" id="tab-tower">
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="calc-section">
+      <h6 class="mb-3 fw-semibold"><i class="bi bi-bar-chart-steps me-2 text-primary"></i>Параметры вышки</h6>
+
+      <div class="row g-2 mb-3">
+        <div class="col-md-6">
+          <label class="form-label small">Высота вышки (м)</label>
+          <select class="form-select form-select-sm" id="t_height">
+            {% for h in tower_heights %}
+            <option value="{{ h }}" {% if h == 3.89 %}selected{% endif %}>{{ h }} м</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small">Модель</label>
+          <select class="form-select form-select-sm" id="t_model">
+            <option value="ПСРВ-21">ПСРВ-21 (−15%)</option>
+            <option value="ПСРВ-22">ПСРВ-22 (+5%)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row g-2 mb-3">
+        <div class="col-md-4">
+          <label class="form-label small">Кол-во вышек</label>
+          <input type="number" class="form-control form-control-sm" id="t_qty" value="1" min="1">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label small">Срок аренды (дней)</label>
+          <input type="number" class="form-control form-control-sm" id="t_days" value="30" min="1">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label small">Город</label>
+          <select class="form-select form-select-sm" id="t_city">
+            {% for city in cities %}
+            <option value="{{ city }}" {% if city == 'Екатеринбург' %}selected{% endif %}>{{ city }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="row g-2 mb-3">
+        <div class="col-md-4">
+          <label class="form-label small">Залог %</label>
+          <input type="number" class="form-control form-control-sm" id="t_deposit_pct" value="10" min="0">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label small">Доставка (руб.)</label>
+          <input type="number" class="form-control form-control-sm" id="t_delivery_cost" value="0" min="0">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label small">НДС</label>
+          <select class="form-select form-select-sm" id="t_vat_mode">
+            <option value="no_vat">Без НДС</option>
+            <option value="with_vat">С НДС (20%)</option>
+          </select>
+        </div>
+      </div>
+
+      <button class="btn btn-primary w-100" id="calcTower">
+        <i class="bi bi-calculator me-2"></i>Рассчитать
+      </button>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div id="t_result" style="display:none">
+      <div class="calc-section">
+        <h6 class="fw-semibold mb-3"><i class="bi bi-currency-dollar me-2 text-warning"></i>Стоимость аренды</h6>
+        <div class="result-box">
+          <div class="result-row"><span class="text-muted">Модель / высота</span><span id="t_model_out"></span></div>
+          <div class="result-row"><span class="text-muted">Секций</span><span id="t_sections"></span></div>
+          <div class="result-row"><span class="text-muted">Тариф (руб./вышка/день)</span><span id="t_rate"></span></div>
+          <div class="result-row"><span class="text-muted">Коэф. модели / города</span><span id="t_coeffs"></span></div>
+          <div class="result-row"><span class="text-muted">Суточная стоимость (1 вышка)</span><span id="t_daily"></span></div>
+          <div class="result-row"><span class="text-muted">Кол-во × Срок</span><span id="t_qty_days"></span></div>
+          <div class="result-row"><span class="text-muted">Итого аренда</span><span class="fw-semibold" id="t_rental"></span></div>
+          <div class="result-row"><span class="text-muted">Рыночная стоимость (1 вышка)</span><span id="t_market_val"></span></div>
+          <div class="result-row"><span class="text-muted">Залог (<span id="t_dep_pct"></span>%)</span><span id="t_deposit"></span></div>
+          <div class="result-row"><span class="text-muted">Доставка</span><span id="t_delivery"></span></div>
+          <div class="result-row fw-bold pt-2">
+            <span>ИТОГО К ОПЛАТЕ</span>
+            <span class="result-total" id="t_grand_total"></span>
+          </div>
+          <div class="result-row text-muted small" id="t_vat_row" style="display:none">
+            <span>в т.ч. НДС 20%</span><span id="t_vat"></span>
+          </div>
+        </div>
+        <div class="mt-3 row g-2 text-muted small">
+          <div class="col-6">Рек. суточная цена: <strong id="t_rec_price"></strong></div>
+          <div class="col-6">Износ %: <strong id="t_recovery"></strong></div>
+        </div>
+      </div>
+      <a href="{% url 'deal_create' %}" class="btn btn-success w-100">
+        <i class="bi bi-file-earmark-plus me-2"></i>Оформить сделку
+      </a>
+    </div>
+    <div id="t_placeholder" class="text-center text-muted py-5">
+      <i class="bi bi-bar-chart-steps display-4 d-block mb-3"></i>
+      Заполните параметры и нажмите «Рассчитать»
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- === DELIVERY TAB === -->
+<div class="tab-pane fade" id="tab-delivery">
+<div class="card">
+  <div class="card-header">Расценки доставки по городам</div>
+  <div class="table-responsive">
+    <table class="table table-striped table-hover mb-0">
+      <thead><tr><th>Населённый пункт</th><th class="text-end">Минимум (руб.)</th><th class="text-end">Максимум (руб.)</th></tr></thead>
+      <tbody>
+        {% for town, min_p, max_p in delivery_prices %}
+        <tr>
+          <td>{{ town }}</td>
+          <td class="text-end">{{ min_p }}</td>
+          <td class="text-end">{% if max_p != min_p %}{{ max_p }}{% else %}—{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+</div>
+
+</div><!-- tab-content -->
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const fmt = n => Number(n).toLocaleString('ru-RU', {maximumFractionDigits:0}) + ' ₽';
+const fmtN = n => Number(n).toLocaleString('ru-RU', {maximumFractionDigits:2});
+
+function getCSRF() {
+  return document.cookie.split(';').map(c=>c.trim()).find(c=>c.startsWith('csrftoken='))?.split('=')[1] || '';
+}
+
+// Scaffolding area preview
+['1','2','3','4'].forEach(i => {
+  const l = document.getElementById(`s_side${i}_length`);
+  const h = document.getElementById(`s_side${i}_height`);
+  [l, h].forEach(el => el.addEventListener('input', () => {
+    const a = (parseFloat(l.value)||0) * (parseFloat(h.value)||0);
+    document.getElementById(`s_area${i}`).textContent = a > 0 ? fmtN(a) + ' м²' : '';
+    updateTotalArea();
+  }));
+});
+
+function updateTotalArea() {
+  let total = 0;
+  ['1','2','3','4'].forEach(i => {
+    const l = parseFloat(document.getElementById(`s_side${i}_length`).value)||0;
+    const h = parseFloat(document.getElementById(`s_side${i}_height`).value)||0;
+    total += l * h;
+  });
+  document.getElementById('s_total_area').textContent = total > 0 ? fmtN(total) : '—';
+}
+
+document.getElementById('calcScaffold').addEventListener('click', async () => {
+  const payload = {
+    side1_length: document.getElementById('s_side1_length').value,
+    side1_height: document.getElementById('s_side1_height').value,
+    side2_length: document.getElementById('s_side2_length').value,
+    side2_height: document.getElementById('s_side2_height').value,
+    side3_length: document.getElementById('s_side3_length').value,
+    side3_height: document.getElementById('s_side3_height').value,
+    side4_length: document.getElementById('s_side4_length').value,
+    side4_height: document.getElementById('s_side4_height').value,
+    days: document.getElementById('s_days').value,
+    city: document.getElementById('s_city').value,
+    season_coeff: document.getElementById('s_season_coeff').value,
+    diagonal_mode: document.getElementById('s_diagonal_mode').value,
+    planks_qty: document.getElementById('s_planks_qty').value,
+    deposit_pct: document.getElementById('s_deposit_pct').value,
+    delivery_cost: document.getElementById('s_delivery_cost').value,
+    vat_mode: document.getElementById('s_vat_mode').value,
+    price_coeff: document.getElementById('s_price_coeff').value,
+    bracket_qty: document.getElementById('s_bracket_qty').value,
+    base_plate_qty: document.getElementById('s_base_plate_qty').value,
+  };
+  const resp = await fetch('{% url "calc_scaffolding_ajax" %}', {
+    method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':getCSRF()},
+    body: JSON.stringify(payload)
+  });
+  const data = await resp.json();
+  if (!data.ok) { alert('Ошибка: ' + data.error); return; }
+  const r = data.result;
+
+  // Equipment table
+  const tbody = document.querySelector('#s_equip_table tbody');
+  tbody.innerHTML = '';
+  r.equipment_items.forEach(item => {
+    if (item.qty > 0) {
+      tbody.innerHTML += `<tr><td>${item.name}</td><td class="text-end">${item.qty}</td>
+        <td class="text-end">${fmt(item.price)}</td><td class="text-end">${fmt(item.total)}</td></tr>`;
+    }
+  });
+  document.getElementById('s_market_value').textContent = fmt(r.market_value);
+
+  document.getElementById('s_rate').textContent = r.rate + ' руб./м²/день';
+  document.getElementById('s_area_out').textContent = fmtN(r.total_area) + ' м²';
+  document.getElementById('s_city_coeff').textContent = r.city + ' × ' + r.city_coeff;
+  document.getElementById('s_season_out').textContent = r.season_coeff;
+  document.getElementById('s_daily').textContent = fmt(r.daily_cost);
+  document.getElementById('s_days_out').textContent = r.rental_days + ' дней';
+  document.getElementById('s_rental').textContent = fmt(r.total_rental);
+  document.getElementById('s_dep_pct').textContent = r.deposit_pct;
+  document.getElementById('s_deposit').textContent = fmt(r.deposit_amount);
+  document.getElementById('s_delivery').textContent = fmt(r.delivery_roundtrip);
+  document.getElementById('s_grand_total').textContent = fmt(r.grand_total_final);
+  document.getElementById('s_rec_price').textContent = fmt(r.recommended_daily) + '/день';
+  document.getElementById('s_recovery').textContent = r.recovery_pct + '%';
+  document.getElementById('s_weight').textContent = fmtN(r.total_weight);
+  document.getElementById('s_trucks').textContent = r.trucks_needed;
+  if (r.vat_amount > 0) {
+    document.getElementById('s_vat').textContent = fmt(r.vat_amount);
+    document.getElementById('s_vat_row').style.display = '';
+  } else {
+    document.getElementById('s_vat_row').style.display = 'none';
+  }
+
+  document.getElementById('s_result').style.display = '';
+  document.getElementById('s_placeholder').style.display = 'none';
+});
+
+document.getElementById('calcTower').addEventListener('click', async () => {
+  const payload = {
+    height: document.getElementById('t_height').value,
+    days: document.getElementById('t_days').value,
+    qty_towers: document.getElementById('t_qty').value,
+    model: document.getElementById('t_model').value,
+    city: document.getElementById('t_city').value,
+    deposit_pct: document.getElementById('t_deposit_pct').value,
+    delivery_cost: document.getElementById('t_delivery_cost').value,
+    vat_mode: document.getElementById('t_vat_mode').value,
+  };
+  const resp = await fetch('{% url "calc_tower_ajax" %}', {
+    method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':getCSRF()},
+    body: JSON.stringify(payload)
+  });
+  const data = await resp.json();
+  if (!data.ok) { alert('Ошибка: ' + data.error); return; }
+  const r = data.result;
+
+  document.getElementById('t_model_out').textContent = r.model + ' h=' + r.height + 'м';
+  document.getElementById('t_sections').textContent = r.sections + ' секции';
+  document.getElementById('t_rate').textContent = r.rate + ' руб.';
+  document.getElementById('t_coeffs').textContent = 'модель×' + r.model_coeff + ' / город×' + r.city_coeff;
+  document.getElementById('t_daily').textContent = fmt(r.daily_cost_per_tower);
+  document.getElementById('t_qty_days').textContent = r.qty_towers + ' шт × ' + r.rental_days + ' дней';
+  document.getElementById('t_rental').textContent = fmt(r.total_rental);
+  document.getElementById('t_market_val').textContent = fmt(r.market_value_per_tower);
+  document.getElementById('t_dep_pct').textContent = r.deposit_pct;
+  document.getElementById('t_deposit').textContent = fmt(r.deposit_total);
+  document.getElementById('t_delivery').textContent = fmt(r.delivery_roundtrip);
+  document.getElementById('t_grand_total').textContent = fmt(r.grand_total_final);
+  document.getElementById('t_rec_price').textContent = fmt(r.recommended_daily) + '/день';
+  document.getElementById('t_recovery').textContent = r.recovery_pct + '%';
+  if (r.vat_amount > 0) {
+    document.getElementById('t_vat').textContent = fmt(r.vat_amount);
+    document.getElementById('t_vat_row').style.display = '';
+  } else {
+    document.getElementById('t_vat_row').style.display = 'none';
+  }
+
+  document.getElementById('t_result').style.display = '';
+  document.getElementById('t_placeholder').style.display = 'none';
+});
+</script>
+{% endblock %}

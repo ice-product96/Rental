@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+<div class="col-lg-9">
+  <div class="card">
+    <div class="card-header">Документ отгрузки — сделка №{{ deal.number }}</div>
+    <div class="card-body">
+      <form method="post">
+        {% csrf_token %}
+        <div class="row g-2 mb-3">
+          <div class="col-md-3">
+            <label class="form-label small">Тип документа</label>
+            <select class="form-select form-select-sm" name="doc_type">
+              <option value="issue">Акт выдачи</option>
+              <option value="return">Акт возврата</option>
+              <option value="partial_return">Частичный возврат</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small">Номер</label>
+            <input type="text" class="form-control form-control-sm" name="number" value="{{ deal.number }}">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small">Дата</label>
+            <input type="date" class="form-control form-control-sm" name="date" value="{{ today|date:'Y-m-d' }}" required>
+          </div>
+          <div class="col-12">
+            <label class="form-label small">Примечания</label>
+            <input type="text" class="form-control form-control-sm" name="notes">
+          </div>
+        </div>
+        <table class="table table-sm">
+          <thead><tr><th>Оборудование</th><th class="text-end">По договору</th><th class="text-end">Цена ед.</th><th style="width:120px">Количество</th></tr></thead>
+          <tbody>
+            {% for item in equipment_items %}
+            <tr>
+              <td>{{ item.equipment_type.name }}</td>
+              <td class="text-end">{{ item.quantity }}</td>
+              <td class="text-end">{{ item.unit_price|floatformat:0 }} ₽</td>
+              <td><input type="number" class="form-control form-control-sm" name="qty_{{ item.pk }}" value="{{ item.quantity }}" min="0" max="{{ item.quantity }}"></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary">Создать документ</button>
+          <a href="{% url 'deal_detail' deal.pk %}" class="btn btn-secondary">Отмена</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+</div>
+{% endblock %}
